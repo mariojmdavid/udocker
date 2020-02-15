@@ -6,6 +6,7 @@ udocker unit tests: FakechrootEngine
 from unittest import TestCase, main
 from udocker.config import Config
 from udocker.container.localrepo import LocalRepository
+from udocker.engine.execmode import ExecutionMode
 from udocker.engine.fakechroot import FakechrootEngine
 try:
     from unittest.mock import patch
@@ -31,9 +32,8 @@ class FakechrootEngineTestCase(TestCase):
         Config().conf['userhome'] = "/"
         Config().conf['oskernel'] = "4.8.13"
         Config().conf['location'] = ""
-
         self.local = LocalRepository()
-        self.xmode = "F1"
+        self.xmode = ExecutionMode(self.local, "12345")
 
     def tearDown(self):
         pass
@@ -68,7 +68,7 @@ class FakechrootEngineTestCase(TestCase):
         """Test03 FakechrootEngine._setup_container_user()."""
         mock_cmm.return_value = True
         ufake = FakechrootEngine(self.local, self.xmode)
-        status = ufake._setup_container_user("lalves")
+        status = ufake._setup_container_user("someuser")
         self.assertTrue(status)
 
     # def test_04__uid_check(self):
@@ -111,7 +111,7 @@ class FakechrootEngineTestCase(TestCase):
         mock_elfsel.return_value = '/bin/pelf'
         mock_futil.return_value.find_file_in_dir.return_value = True
         mock_isvol.return_value = True
-        self.xmode = 'F1'
+        # self.xmode = 'F1'
         # ufake = FakechrootEngine(self.local, self.xmode)
         # ufake._fakechroot_env_set()
         # self.assertTrue(mock_eecom.return_value.exec_mode.called)
@@ -146,7 +146,7 @@ class FakechrootEngineTestCase(TestCase):
         mock_raddsup.return_value = ['/ROOT/xx.sh']
         mock_subp.return_value = 0
         ufake = FakechrootEngine(self.local, self.xmode)
-        status = ufake.run("container_id")
+        status = ufake.run("12345")
         self.assertEqual(status, 0)
 
 
