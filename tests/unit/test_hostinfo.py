@@ -4,28 +4,22 @@
 """
 udocker unit tests: HostInfo
 """
-import pwd
-import sys
-import pytest
-
-try:
-    import udocker
-except ImportError:
-    sys.path.append('.')
-    sys.path.append('../')
-    import udocker
-
+from unittest import TestCase, main
 from udocker.helper.hostinfo import HostInfo
+from udocker.config import Config
+from udocker.container.localrepo import LocalRepository
+try:
+    from unittest.mock import patch
+except ImportError:
+    from mock import patch
 
-##@pytest.mark.parametrize
-def test_username(monkeypatch):
-    """Test001 HostInfo.username"""
-    def mock_pw_name():
-        return 'someuser'
 
-    monkeypatch.setattr(pwd.getpwuid, 'pw_name', mock_pw_name)
-    uname = mock_pw_name()
-    hinfo = HostInfo()
-    assert hinfo.username() == 'someuser'
-    # with pytest.raises(KeyError):
-    #     hinfo.username()
+class HostInfoTestCase(TestCase):
+    """Test HostInfo"""
+
+    def setUp(self):
+        Config().getconf()
+        self.local = LocalRepository()
+
+    def tearDown(self):
+        pass
