@@ -23,8 +23,8 @@ class HostInfoTestCase(TestCase):
         """Test01 HostInfo().username."""
         usr = pwd.struct_passwd(["root", "*", "0", "0", "root usr",
                                  "/root", "/bin/bash"])
-        mock_uid = 0
-        mock_gid = 0
+        mock_uid.return_value = 0
+        mock_gid.return_value = 0
         mock_getpwuid.return_value = usr
         name = HostInfo().username()
         self.assertEqual(name, usr.pw_name)
