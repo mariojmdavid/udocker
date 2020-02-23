@@ -3,15 +3,14 @@
 udocker unit tests: ExecutionMode
 """
 
-import sys
+from unittest import TestCase, main
 from udocker.engine.execmode import ExecutionMode
 from udocker.engine.proot import PRootEngine
 from udocker.engine.runc import RuncEngine
 from udocker.engine.fakechroot import FakechrootEngine
 from udocker.engine.singularity import SingularityEngine
 from udocker.config import Config
-from udocker.container.localrepo import LocalRepository
-from unittest import TestCase, main
+#from udocker.container.localrepo import LocalRepository
 try:
     from unittest.mock import Mock, MagicMock, patch, mock_open
 except ImportError:
@@ -37,30 +36,36 @@ class ExecutionModeTestCase(TestCase):
         Config().conf['arch'] = "ARCH"
         Config().conf['default_execution_mode'] = "P1"
         self.container_id = "CONTAINER_ID"
-        self.local = LocalRepository()
+
+        str_local = 'udocker.container.localrepo.LocalRepository'
+        self.lrepo = patch(str_local)
+        self.local = self.lrepo.start()
+        self.mock_lrepo = Mock()
+        self.local.return_value = self.mock_lrepo
+
+        str_cd = str_local + '.cd_container'
+        self.cdcont = patch(str_cd, return_value="/tmp")
+        self.mock_cdcont = self.cdcont.start()
 
     def tearDown(self):
-        pass
+        self.lrepo.stop()
+        self.cdcont.stop()
 
-    @patch('udocker.engine.execmode.os.path.realpath')
-    @patch('udocker.container.localrepo.LocalRepository.cd_container', autospec=True)
-    def test_01_init(self, mock_cdcont, mock_realpath):
+    def test_01_init(self):
         """Test01 ExecutionMode() constructor."""
-        mock_realpath.return_value = "/tmp"
-        mock_cdcont.return_value = "/tmp"
         uexm = ExecutionMode(self.local, self.container_id)
         self.assertEqual(uexm.localrepo, self.local)
         self.assertEqual(uexm.container_id, "CONTAINER_ID")
-        # self.assertEqual(uexm.container_dir, "/tmp")
-        # self.assertEqual(uexm.container_root, "/tmp/ROOT")
-        # self.assertEqual(uexm.container_execmode, "/tmp/execmode")
+        self.assertEqual(uexm.container_dir, "/tmp")
+        self.assertEqual(uexm.container_root, "/tmp/ROOT")
+        self.assertEqual(uexm.container_execmode, "/tmp/execmode")
         self.assertIsNone(uexm.exec_engine)
         self.assertEqual(uexm.valid_modes,
-                         ("P1", "P2", "F1", "F2", "F3", "F4", "R1", "R2", "R3", "S1"))
+                         ("P1", "P2", "F1", "F2",
+                          "F3", "F4", "R1", "R2", "R3", "S1"))
 
-    @patch('udocker.engine.execmode.os.path')
     @patch('udocker.engine.execmode.FileUtil.getdata')
-    def test_02_get_mode(self, mock_getdata, mock_path):
+    def test_02_get_mode(self, mock_getdata):
         """Test02 ExecutionMode().get_mode."""
         mock_getdata.return_value.strip.return_value = None
         uexm = ExecutionMode(self.local, self.container_id)
@@ -72,26 +77,36 @@ class ExecutionModeTestCase(TestCase):
         status = uexm.get_mode()
         self.assertEqual(status, "F3")
 
-    @patch('udocker.engine.execmode.FileBind.setup')
-    @patch('udocker.engine.execmode.FileBind.restore')
-    @patch('udocker.engine.execmode.Msg')
-    @patch('udocker.engine.execmode.ExecutionMode.get_mode')
     @patch('udocker.engine.execmode.os.path')
+    @patch('udocker.engine.execmode.FileUtil.putdata')
+    @patch('udocker.engine.execmode.ElfPatcher.patch_binaries')
+    @patch('udocker.engine.execmode.ElfPatcher.patch_ld')
+    @patch('udocker.engine.execmode.FileBind.setup')
+    @patch('udocker.engine.execmode.ElfPatcher.restore_binaries')
+    @patch('udocker.engine.execmode.ElfPatcher.restore_ld')
+    @patch('udocker.engine.execmode.ElfPatcher.get_ld_libdirs')
+    @patch('udocker.engine.execmode.FileUtil.links_conv')
+    @patch('udocker.engine.execmode.FileBind.restore')
+    @patch('udocker.engine.execmode.FileUtil.getdata')
+    @patch('udocker.engine.execmode.FileUtil')
     @patch('udocker.engine.execmode.FileBind')
     @patch('udocker.engine.execmode.ElfPatcher')
-    @patch('udocker.engine.execmode.FileUtil')
-    @patch('udocker.engine.execmode.FileUtil.putdata')
-    def test_03_set_mode(self, mock_putdata, mock_futil,
-                         mock_elfp, mock_fbind,
-                         mock_path, mock_getmode, mock_msg,
-                         mock_restore, mock_setup):
+    @patch.object(ExecutionMode, 'get_mode')
+    def test_03_set_mode(self, mock_getmode, mock_elfp, mock_fbind,
+                         mock_futil, mock_getdata, mock_restore,
+                         mock_links, mock_getld, mock_restld, mock_resbin,
+                         mock_fbset, mock_ptcld, mock_ptcbin, mock_putdata,
+                         mock_path):
         """Test03 ExecutionMode().set_mode."""
         mock_getmode.side_effect = \
             ["", "P1", "R1", "R1", "F4", "P1", "F3", "P2", "P2", "F4", "F4"]
-        mock_putdata.return_value = True
-        mock_path.return_value = "/tmp"
+        mock_getdata.return_value = "F3"
         uexm = ExecutionMode(self.local, self.container_id)
         status = uexm.set_mode("")
+        self.assertTrue(mock_getmode.called)
+        self.assertTrue(mock_elfp.called)
+        self.assertTrue(mock_fbind.called)
+        self.assertTrue(mock_futil.called)
         self.assertFalse(status)
 
         uexm = ExecutionMode(self.local, self.container_id)
@@ -99,8 +114,14 @@ class ExecutionModeTestCase(TestCase):
         self.assertTrue(status)
 
         uexm = ExecutionMode(self.local, self.container_id)
-        uexm.set_mode("P1")
-        #self.assertTrue(mock_restore.called)
+        status = uexm.set_mode("F1", True)
+        self.assertTrue(status)
+
+        mock_putdata.return_value = True
+        mock_path.return_value = "/tmp"
+        uexm = ExecutionMode(self.local, self.container_id)
+        status = uexm.set_mode("P1")
+        self.assertTrue(status)
 
         uexm = ExecutionMode(self.local, self.container_id)
         uexm.set_mode("F1")
@@ -109,10 +130,6 @@ class ExecutionModeTestCase(TestCase):
         uexm = ExecutionMode(self.local, self.container_id)
         uexm.set_mode("P2")
         self.assertTrue(mock_elfp.return_value.restore_ld.called)
-
-        uexm = ExecutionMode(self.local, self.container_id)
-        uexm.set_mode("R1")
-        #self.assertTrue(mock_setup.called)
 
         uexm = ExecutionMode(self.local, self.container_id)
         uexm.set_mode("F2")
@@ -130,11 +147,6 @@ class ExecutionModeTestCase(TestCase):
         uexm = ExecutionMode(self.local, self.container_id)
         status = uexm.set_mode("F3")
         self.assertTrue(status)
-
-        mock_putdata.return_value = False
-        uexm = ExecutionMode(self.local, self.container_id)
-        uexm.set_mode("F3")
-        self.assertTrue(mock_msg.return_value.err.called)
 
     @patch.object(ExecutionMode, 'get_mode')
     def test_04_get_engine(self, mock_getmode):
