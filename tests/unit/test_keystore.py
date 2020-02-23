@@ -32,8 +32,17 @@ class KeyStoreTestCase(TestCase):
         status = kstore.keystore_file
         self.assertEqual(status, "filename")
 
-    # def test_02__verify_keystore(self):
+    # @patch('udocker.helper.keystore.os.path.dirname')
+    # @patch('udocker.helper.keystore.HostInfo')
+    # @patch('udocker.helper.keystore.FileUtil')
+    # def test_02__verify_keystore(self, mock_futil, mock_hinfo, mock_pdir):
     #     """Test02 KeyStore()._verify_keystore()."""
+    #     mock_futil.return_value.uid.return_value = 1000
+    #     mock_hinfo.return_value.uid.return_value = 1000
+    #     mock_pdir.return_value = "somedir/filename"
+    #     kstore = KeyStore("filename")
+    #     kstore._verify_keystore()
+    #     self.assertTrue(mock_futil.uid.called)
 
     @patch('udocker.helper.keystore.json.load')
     def test_03__read_all(self, mock_jload):
