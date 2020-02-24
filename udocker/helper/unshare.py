@@ -31,6 +31,7 @@ class Unshare(object):
         _unshare.argtypes = (ctypes.c_int, )
 
         if _unshare(flags) == -1:
+            # TODO os.strerror() takes 1 arg none given
             Msg().err("Error: in unshare:", os.strerror())
             return False
         return True
