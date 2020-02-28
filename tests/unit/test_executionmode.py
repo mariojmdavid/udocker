@@ -10,7 +10,6 @@ from udocker.engine.runc import RuncEngine
 from udocker.engine.fakechroot import FakechrootEngine
 from udocker.engine.singularity import SingularityEngine
 from udocker.config import Config
-#from udocker.container.localrepo import LocalRepository
 try:
     from unittest.mock import Mock, MagicMock, patch, mock_open
 except ImportError:
