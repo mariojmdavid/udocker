@@ -27,11 +27,47 @@ class OciLocalFileAPITestCase(TestCase):
     # def test_01__init(self):
     #     """Test01 OciLocalFileAPI() constructor."""
 
-    # def test_02__load_structure(self):
-    #     """Test02 OciLocalFileAPI()._load_structure."""
+    @patch('udocker.oci.FileUtil.isdir')
+    @patch('udocker.oci.os.listdir')
+    @patch('udocker.container.localrepo.LocalRepository.load_json', autospec=True)
+    def test_02__load_structure(self, mock_ljson, mock_oslist, mock_isdir):
+        """Test02 OciLocalFileAPI()._load_structure."""
+        mock_ljson.side_effect = [[], []]
+        status = OciLocalFileAPI(self.local)._load_structure('tmpimg')
+        self.assertEqual(status, {})
 
-    # def test_03__get_from_manifest(self):
-    #     """Test03 OciLocalFileAPI()._get_from_manifest."""
+        out_res = {'repolayers': {},
+                   'manifest': {},
+                   'oci-layout': 'oci_lay1',
+                   'index': 'idx1'}
+        mock_ljson.side_effect = ['oci_lay1', 'idx1']
+        mock_oslist.return_value = ['f1']
+        mock_isdir.return_value = False
+        status = OciLocalFileAPI(self.local)._load_structure('tmpimg')
+        self.assertEqual(status, out_res)
+
+        out_res = {'repolayers': {'f1:f2': {'layer_a': 'f1',
+                                            'layer_f': 'tmpimg/blobs/f1/f2',
+                                            'layer_h': 'f2'}},
+                   'manifest': {},
+                   'oci-layout': 'oci_lay1',
+                   'index': 'idx1'}
+        mock_ljson.side_effect = ['oci_lay1', 'idx1']
+        mock_oslist.side_effect = [['f1'], ['f2']]
+        mock_isdir.return_value = True
+        status = OciLocalFileAPI(self.local)._load_structure('tmpimg')
+        self.assertEqual(status, out_res)
+
+    def test_03__get_from_manifest(self):
+        """Test03 OciLocalFileAPI()._get_from_manifest."""
+        imgtag = '123'
+        struct = {'manifest': {'123': {'json': {'layers': [{'digest': 'd1'},
+                                                           {'digest': 'd2'}],
+                                                'config': {'digest': 'dgt'}}}}}
+        lay_out = ['d2', 'd1']
+        conf_out = 'dgt'
+        status = OciLocalFileAPI(self.local)._get_from_manifest(struct, imgtag)
+        self.assertEqual(status, (conf_out, lay_out))
 
     # def test_04__load_manifest(self):
     #     """Test04 OciLocalFileAPI()._load_manifest."""
