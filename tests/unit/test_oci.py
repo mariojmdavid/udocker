@@ -108,9 +108,10 @@ class OciLocalFileAPITestCase(TestCase):
 
         tmpdir = '/ROOT'
         imgrepo = 'somerepo'
-        mock_loadstruct.return_value = {'repolayers': {'f1:f2': {'layer_a': 'f1',
-                                                                 'layer_f': 'tmpimg/blobs/f1/f2',
-                                                                 'layer_h': 'f2'}},
+        mock_loadstruct.return_value = {'repolayers':
+                                            {'f1:f2': {'layer_a': 'f1',
+                                             'layer_f': 'tmpimg/blobs/f1/f2',
+                                             'layer_h': 'f2'}},
                                         'manifest': {},
                                         'oci-layout': 'oci_lay1',
                                         'index': 'idx1'}
