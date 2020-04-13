@@ -69,7 +69,7 @@ class Uenv(object):
 
     def __len__(self):
         """Returns the number of stored env variables"""
-        return len(self.env)
+        return len(list(self.env))
 
     def append(self, envstr):
         """Add string with key=val to Uenv"""
@@ -102,7 +102,7 @@ class Uenv(object):
                 self.appendif(envstr)
         elif isinstance(envlist, (dict)):
             for key in envlist.keys():
-                if key not in self.env: 
+                if key not in self.env:
                     self.env[key] = envlist[key]
         return self
 
@@ -146,4 +146,4 @@ class Uenv(object):
 
     def keys(self):
         """Get list of environment variable names"""
-        return self.env.keys()
+        return list(self.env)
