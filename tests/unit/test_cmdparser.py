@@ -65,8 +65,8 @@ class CmdParserTestCase(TestCase):
         cmdp.parse(argv)
         out = cmdp.get("--debug", "GEN_OPT", True)
         self.assertTrue(out)
-        out = cmdp.get("run", "CMD", True)
-        self.assertTrue(out)
+        out = cmdp.get("", "CMD", True)
+        self.assertTrue(out, "run")
         out = cmdp.get("--bindhome", "CMD_OPT", True)
         self.assertEqual(out, [True])
 
@@ -76,14 +76,14 @@ class CmdParserTestCase(TestCase):
     #             "-v", "/sys", "-v", "/proc", "-v", "/var/run", "-v", "/dev",
     #             "--user=jorge", "--dri", "myfed", "firefox"]
     #     cmdp = CmdParser()
+    #     cmdp.parse(argv)
     #     cmdp.declare_options("-v= -e= -w= -u= -i -t -a")
 
     # def test_06__get_option(self):
     #     """Test06 CmdParser()._get_option()."""
-    #     argv = ("udocker --debug run --bindhome --hostauth --hostenv -v /sys"
-    #             " -v /proc -v /var/run -v /dev --user=jorge "
-    #             "--dri myfed firefox")
+    #     argv = ["udocker", "--debug", "run", "myfed", "firefox"]
     #     cmdp = CmdParser()
+    #     cmdp.parse(argv)
     #     cmdp._get_option()
 
     # def test_07__get_param(self):
