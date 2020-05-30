@@ -219,14 +219,131 @@ class CommonLocalFileApiTestCase(TestCase):
         self.assertEqual(status, "12345")
         self.assertTrue(mock_layerv1.called)
 
-    # def test_08_import_tocontainer(self):
-    #     """Test08 CommonLocalFileApi().import_tocontainer()."""
+    @patch('udocker.commonlocalfile.ContainerStructure.create_fromlayer')
+    @patch('udocker.commonlocalfile.Unique.layer_v1')
+    @patch('udocker.commonlocalfile.os.path.exists')
+    def test_08_import_tocontainer(self, mock_exists, mock_layerv1,
+                                   mock_create):
+        """Test08 CommonLocalFileApi().import_tocontainer()."""
+        tarfile = ""
+        imagerepo = ""
+        tag = ""
+        container_name = ""
+        mock_exists.return_value = False
+        clfapi = CommonLocalFileApi(self.local)
+        status = clfapi.import_tocontainer(tarfile, imagerepo,
+                                           tag, container_name)
+        self.assertFalse(status)
 
-    # def test_09_import_clone(self):
-    #     """Test09 CommonLocalFileApi().import_clone()."""
+        tarfile = "img.tar"
+        imagerepo = "/home/.udocker/images"
+        tag = "v1"
+        container_name = "mycont"
+        self.local.get_container_id.return_value = True
+        mock_exists.return_value = True
+        clfapi = CommonLocalFileApi(self.local)
+        status = clfapi.import_tocontainer(tarfile, imagerepo,
+                                           tag, container_name)
+        self.assertTrue(self.local.get_container_id.called)
+        self.assertTrue(mock_exists.called)
+        self.assertFalse(status)
 
-    # def test_10_clone_container(self):
-    #     """Test10 CommonLocalFileApi().clone_container()."""
+        tarfile = "img.tar"
+        imagerepo = "/home/.udocker/images"
+        tag = "v1"
+        container_name = "mycont"
+        self.local.get_container_id.return_value = False
+        self.local.set_container_name.return_value = True
+        mock_exists.return_value = True
+        mock_layerv1.return_value = "12345"
+        mock_create.return_value = "345"
+        clfapi = CommonLocalFileApi(self.local)
+        status = clfapi.import_tocontainer(tarfile, imagerepo,
+                                           tag, container_name)
+        self.assertTrue(self.local.get_container_id.called)
+        self.assertTrue(mock_exists.called)
+        self.assertTrue(mock_layerv1.called)
+        self.assertTrue(mock_create.called)
+        self.assertEqual(status, "345")
+
+    @patch('udocker.commonlocalfile.ContainerStructure.clone_fromfile')
+    @patch('udocker.commonlocalfile.os.path.exists')
+    def test_09_import_clone(self, mock_exists, mock_clone):
+        """Test09 CommonLocalFileApi().import_clone()."""
+        tarfile = ""
+        container_name = ""
+        mock_exists.return_value = False
+        clfapi = CommonLocalFileApi(self.local)
+        status = clfapi.import_clone(tarfile, container_name)
+        self.assertFalse(status)
+
+        tarfile = "img.tar"
+        container_name = "mycont"
+        self.local.get_container_id.return_value = True
+        mock_exists.return_value = True
+        clfapi = CommonLocalFileApi(self.local)
+        status = clfapi.import_clone(tarfile, container_name)
+        self.assertTrue(self.local.get_container_id.called)
+        self.assertTrue(mock_exists.called)
+        self.assertFalse(status)
+
+        tarfile = "img.tar"
+        container_name = "mycont"
+        self.local.get_container_id.return_value = False
+        self.local.set_container_name.return_value = True
+        mock_exists.return_value = True
+        mock_clone.return_value = "345"
+        clfapi = CommonLocalFileApi(self.local)
+        status = clfapi.import_clone(tarfile, container_name)
+        self.assertTrue(self.local.get_container_id.called)
+        self.assertTrue(mock_exists.called)
+        self.assertTrue(mock_clone.called)
+        self.assertEqual(status, "345")
+
+    @patch('udocker.commonlocalfile.ExecutionMode.set_mode')
+    @patch('udocker.commonlocalfile.ExecutionMode.get_mode')
+    @patch('udocker.commonlocalfile.ContainerStructure.clone')
+    def test_10_clone_container(self, mock_clone,
+                                mock_exget, mock_exset):
+        """Test10 CommonLocalFileApi().clone_container()."""
+        container_name = "mycont"
+        container_id = ""
+        self.local.get_container_id.return_value = True
+        clfapi = CommonLocalFileApi(self.local)
+        status = clfapi.clone_container(container_id, container_name)
+        self.assertFalse(status)
+
+        container_name = "mycont"
+        container_id = ""
+        self.local.get_container_id.return_value = False
+        self.local.set_container_name.return_value = True
+        mock_clone.return_value = "345"
+        mock_exget.return_value = "P1"
+        mock_exset.return_value = True
+        clfapi = CommonLocalFileApi(self.local)
+        status = clfapi.clone_container(container_id, container_name)
+        self.assertTrue(self.local.get_container_id.called)
+        self.assertTrue(self.local.set_container_name.called)
+        self.assertTrue(mock_exget.called)
+        self.assertFalse(mock_exset.called)
+        self.assertTrue(mock_clone.called)
+        self.assertEqual(status, "345")
+
+        container_name = "mycont"
+        container_id = ""
+        self.local.get_container_id.return_value = False
+        self.local.set_container_name.return_value = True
+        mock_clone.return_value = "345"
+        mock_exget.return_value = "F1"
+        mock_exset.return_value = True
+        clfapi = CommonLocalFileApi(self.local)
+        status = clfapi.clone_container(container_id, container_name)
+        self.assertTrue(self.local.get_container_id.called)
+        self.assertTrue(self.local.set_container_name.called)
+        self.assertTrue(mock_exget.called)
+        self.assertTrue(mock_exset.called)
+        self.assertTrue(mock_clone.called)
+        self.assertEqual(status, "345")
 
     @patch('udocker.commonlocalfile.os.path.exists')
     def test_11__get_imagedir_type(self, mock_exists):
