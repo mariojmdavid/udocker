@@ -194,15 +194,7 @@ class PRootEngineTestCase(TestCase):
         mock_getenv.return_value = False
         mock_envupd.return_value = None
         prex = PRootEngine(self.local, self.xmode)
-        prex.proot_noseccomp = False
-        prex.container_root = "/home/.udocker/container/ROOT"
-        prex.opt = dict()
-        prex.opt["env"] = []
         prex.opt["kernel"] = "5.4.0"
-        prex.opt["netcoop"] = False
-        prex.opt["portsmap"] = []
-        prex.opt["cwd"] = "/home/.udocker/container/ROOT"
-        prex.opt["cmd"] = "/bin/la"
         status = prex.run("CONTAINERID")
         self.assertEqual(status, 5)
 
