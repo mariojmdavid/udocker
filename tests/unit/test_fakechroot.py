@@ -5,13 +5,11 @@ udocker unit tests: FakechrootEngine
 
 from unittest import TestCase, main
 from udocker.config import Config
-from udocker.container.localrepo import LocalRepository
-from udocker.engine.execmode import ExecutionMode
 from udocker.engine.fakechroot import FakechrootEngine
 try:
-    from unittest.mock import patch
+    from unittest.mock import patch, Mock
 except ImportError:
-    from mock import patch
+    from mock import patch, Mock
 
 
 class FakechrootEngineTestCase(TestCase):
@@ -32,11 +30,22 @@ class FakechrootEngineTestCase(TestCase):
         Config().conf['userhome'] = "/"
         Config().conf['oskernel'] = "4.8.13"
         Config().conf['location'] = ""
-        self.local = LocalRepository()
-        self.xmode = ExecutionMode(self.local, "12345")
+
+        str_local = 'udocker.container.localrepo.LocalRepository'
+        self.lrepo = patch(str_local)
+        self.local = self.lrepo.start()
+        self.mock_lrepo = Mock()
+        self.local.return_value = self.mock_lrepo
+
+        str_exmode = 'udocker.engine.execmode.ExecutionMode'
+        self.execmode = patch(str_exmode)
+        self.xmode = self.execmode.start()
+        self.mock_execmode = Mock()
+        self.xmode.return_value = self.mock_execmode
 
     def tearDown(self):
-        pass
+        self.lrepo.stop()
+        self.execmode.stop()
 
     def test_01__init(self):
         """Test01 FakechrootEngine Constructor."""
@@ -44,24 +53,69 @@ class FakechrootEngineTestCase(TestCase):
         self.assertEqual(ufake._fakechroot_so, "")
         self.assertIsNone(ufake._elfpatcher)
 
-    # TODO: implement more tests/options
-    @patch('udocker.engine.fakechroot.OSInfo.osdistribution')
-    @patch('udocker.engine.fakechroot.OSInfo.arch')
+    @patch('udocker.engine.fakechroot.sys.exit')
+    @patch('udocker.engine.fakechroot.OSInfo')
     @patch('udocker.engine.fakechroot.Msg.err')
-    @patch('udocker.engine.fakechroot.os.path')
+    @patch('udocker.engine.fakechroot.os.path.realpath')
+    @patch('udocker.engine.fakechroot.os.path.exists')
     @patch('udocker.engine.fakechroot.FileUtil')
-    def test_02_select_fakechroot_so(self, mock_futil, mock_path,
-                                     mock_msgerr, mock_arch, mock_distro):
+    def test_02_select_fakechroot_so(self, mock_futil, mock_exists,
+                                     mock_rpath, mock_msgerr, mock_osinfo,
+                                     mock_sysex):
         """Test02 FakechrootEngine.select_fakechroot_so."""
-        mock_path.return_value.exists.return_value = True
-        mock_path.return_value.realpath.return_value = '/bin/xxx'
-        mock_futil.return_value.find_file_in_dir.return_value = 'fake1'
-        mock_arch.return_value = "amd64"
-        mock_distro.return_value = ("linux", "4.8.1")
-        Config().conf['fakechroot_so'] = ['/s/fake1', '/s/fake2']
+        Config().conf['fakechroot_so'] = "/s/fake1"
+        mock_exists.return_value = True
+        mock_rpath.return_value = "/s/fake1"
         ufake = FakechrootEngine(self.local, self.xmode)
         out = ufake.select_fakechroot_so()
-        self.assertEqual(out, 'fake1')
+        self.assertEqual(out, "/s/fake1")
+
+        Config().conf['fakechroot_so'] = ""
+        mock_exists.return_value = True
+        ufake = FakechrootEngine(self.local, self.xmode)
+        out = ufake.select_fakechroot_so()
+        self.assertEqual(out, "/libfakechroot.so")
+
+        Config().conf['fakechroot_so'] = ""
+        mock_exists.return_value = False
+        mock_osinfo.return_value.arch.return_value = "amd64"
+        mock_osinfo.return_value.osdistribution.return_value = ("linux", "4.8.1")
+        mock_futil.return_value.find_file_in_dir.return_value = ""
+        mock_sysex.return_value = 1
+        ufake = FakechrootEngine(self.local, self.xmode)
+        out = ufake.select_fakechroot_so()
+        self.assertTrue(mock_sysex.called)
+        self.assertTrue(mock_futil.called)
+
+        Config().conf['fakechroot_so'] = ""
+        mock_exists.return_value = False
+        mock_osinfo.return_value.arch.return_value = "amd64"
+        mock_osinfo.return_value.osdistribution.return_value = ("linux", "4.8.1")
+        mock_futil.return_value.find_file_in_dir.return_value = "/libfakechroot.so"
+        ufake = FakechrootEngine(self.local, self.xmode)
+        out = ufake.select_fakechroot_so()
+        self.assertTrue(mock_futil.called)
+        self.assertEqual(out, "/libfakechroot.so")
+
+        Config().conf['fakechroot_so'] = ""
+        mock_exists.return_value = False
+        mock_osinfo.return_value.arch.return_value = "i386"
+        mock_osinfo.return_value.osdistribution.return_value = ("linux", "4.8.1")
+        mock_futil.return_value.find_file_in_dir.return_value = "/libfakechroot.so"
+        ufake = FakechrootEngine(self.local, self.xmode)
+        out = ufake.select_fakechroot_so()
+        self.assertTrue(mock_futil.called)
+        self.assertEqual(out, "/libfakechroot.so")
+
+        Config().conf['fakechroot_so'] = ""
+        mock_exists.return_value = False
+        mock_osinfo.return_value.arch.return_value = "arm64"
+        mock_osinfo.return_value.osdistribution.return_value = ("linux", "4.8.1")
+        mock_futil.return_value.find_file_in_dir.return_value = "/libfakechroot.so"
+        ufake = FakechrootEngine(self.local, self.xmode)
+        out = ufake.select_fakechroot_so()
+        self.assertTrue(mock_futil.called)
+        self.assertEqual(out, "/libfakechroot.so")
 
     @patch('udocker.engine.fakechroot.ExecutionEngineCommon._setup_container_user_noroot')
     def test_03__setup_container_user(self, mock_cmm):
@@ -69,16 +123,29 @@ class FakechrootEngineTestCase(TestCase):
         mock_cmm.return_value = True
         ufake = FakechrootEngine(self.local, self.xmode)
         status = ufake._setup_container_user("someuser")
+        self.assertTrue(mock_cmm.called)
         self.assertTrue(status)
 
-    # def test_04__uid_check(self):
-    #     """Test04 FakechrootEngine._uid_check()."""
+    @patch('udocker.engine.fakechroot.Msg')
+    def test_04__uid_check(self, mock_msg):
+        """Test04 FakechrootEngine._uid_check()."""
+        mock_msg.level = 3
+        ufake = FakechrootEngine(self.local, self.xmode)
+        ufake.opt["user"] = "0"
+        ufake._uid_check()
+        self.assertTrue(mock_msg.return_value.out.called)
 
     def test_05__get_volume_bindings(self):
         """Test05 FakechrootEngine._get_volume_bindings()."""
         ufake = FakechrootEngine(self.local, self.xmode)
-        out = ufake._get_volume_bindings()
-        self.assertEqual(out, ("", ""))
+        ufake.opt["vol"] = ()
+        status = ufake._get_volume_bindings()
+        self.assertEqual(status, ('', ''))
+
+        ufake = FakechrootEngine(self.local, self.xmode)
+        ufake.opt["vol"] = ("/tmp", "/bin",)
+        status = ufake._get_volume_bindings()
+        self.assertEqual(status, ('', '/tmp!/tmp:/bin!/bin'))
 
     def test_06__get_access_filesok(self):
         """Test06 FakechrootEngine._get_access_filesok()."""
