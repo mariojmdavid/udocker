@@ -147,11 +147,26 @@ class FakechrootEngineTestCase(TestCase):
         status = ufake._get_volume_bindings()
         self.assertEqual(status, ('', '/tmp!/tmp:/bin!/bin'))
 
-    def test_06__get_access_filesok(self):
+    @patch('udocker.engine.fakechroot.os.path.exists')
+    @patch('udocker.engine.fakechroot.FileUtil.cont2host')
+    def test_06__get_access_filesok(self, mock_cont2host, mock_exists):
         """Test06 FakechrootEngine._get_access_filesok()."""
+        Config.conf['access_files'] = ("/sys/infin",)
+        mock_cont2host.return_value = "/c/sys/infin"
+        mock_exists.return_value = False
         ufake = FakechrootEngine(self.local, self.xmode)
         out = ufake._get_access_filesok()
         self.assertEqual(out, "")
+
+        Config.conf['access_files'] = ("/sys/infin",)
+        mock_cont2host.return_value = "/c/sys/infin"
+        mock_exists.return_value = True
+        ufake = FakechrootEngine(self.local, self.xmode)
+        ufake.opt["vol"] = ("/tmp",)
+        out = ufake._get_access_filesok()
+        self.assertTrue(mock_cont2host.called)
+        self.assertTrue(mock_exists.called)
+        self.assertEqual(out, "/sys/infin")
 
     # TODO: implement WIP
     @patch.object(FakechrootEngine, '_get_volume_bindings')
@@ -159,39 +174,97 @@ class FakechrootEngineTestCase(TestCase):
     @patch.object(FakechrootEngine, '_get_access_filesok')
     @patch.object(FakechrootEngine, '_is_volume')
     @patch('udocker.engine.fakechroot.os.path.realpath')
-    @patch('udocker.engine.fakechroot.ElfPatcher.select_patchelf')
-    @patch('udocker.engine.fakechroot.ElfPatcher.get_container_loader')
-    @patch('udocker.engine.fakechroot.ElfPatcher.get_ld_library_path')
+    @patch('udocker.engine.fakechroot.ElfPatcher')
     @patch('udocker.engine.fakechroot.FileUtil')
-    @patch('udocker.engine.fakechroot.Msg')
-    def test_07__fakechroot_env_set(self, mock_msg, mock_futil, mock_elfldp,
-                                    mock_elfload, mock_elfsel,
+    def test_07__fakechroot_env_set(self, mock_futil, mock_elf,
                                     mock_rpath, mock_isvol, mock_fok, mock_sel,
                                     mock_getvol):
         """Test07 FakechrootEngine._fakechroot_env_set()."""
-        mock_getvol.return_value = ('v1:v2', 'm1:m2:m3')
+        Config.conf['fakechroot_expand_symlinks'] = None
+        mock_getvol.return_value = ('v1:v2', 'm1:m2')
         mock_sel.return_value = '/ROOT/lib/libfakechroot.so'
-        mock_fok.return_value = 'a:b:c'
+        mock_fok.return_value = "/sys/infin"
         mock_rpath.return_value = '/bin/fake.so'
-        mock_elfldp.return_value = '/a:/b:/c'
-        mock_elfload.return_value = '/ROOT/elf'
-        mock_elfsel.return_value = '/bin/pelf'
+        mock_elf.return_value.get_ld_library_path.return_value = '/a'
+        mock_elf.return_value.get_container_loader.return_value = '/ROOT/elf'
         mock_futil.return_value.find_file_in_dir.return_value = True
-        mock_isvol.return_value = True
-        # self.xmode = 'F1'
-        # ufake = FakechrootEngine(self.local, self.xmode)
-        # ufake._fakechroot_env_set()
-        # self.assertTrue(mock_eecom.return_value.exec_mode.called)
+        mock_isvol.return_value = False
+        self.xmode.get_mode.return_value = 'F1'
+        ufake = FakechrootEngine(self.local, self.xmode)
+        ufake._elfpatcher = mock_elf
+        ufake._fakechroot_env_set()
+        self.assertTrue(self.xmode.get_mode.called)
+        self.assertTrue(mock_getvol.called)
+        self.assertTrue(mock_sel.called)
+        self.assertTrue(mock_fok.called)
+        self.assertTrue(mock_rpath.called)
+        self.assertTrue(mock_isvol.called)
 
-    # def test_08__run_invalid_options(self):
-    #     """FakechrootEngine._run_invalid_options()"""
-    #     pass
+        Config.conf['fakechroot_expand_symlinks'] = None
+        mock_getvol.return_value = ('v1:v2', 'm1:m2')
+        mock_sel.return_value = '/ROOT/lib/libfakechroot.so'
+        mock_fok.return_value = "/sys/infin"
+        mock_rpath.return_value = '/bin/fake.so'
+        mock_elf.return_value.get_ld_library_path.return_value = '/a'
+        mock_elf.return_value.select_patchelf.return_value = '/ROOT/elf'
+        mock_elf.return_value.get_patch_last_time.return_value = '/ROOT/elf'
+        mock_elf.return_value.get_container_loader.return_value = '/ROOT/elf'
+        mock_futil.return_value.find_file_in_dir.return_value = True
+        mock_isvol.return_value = False
+        self.xmode.get_mode.return_value = 'F4'
+        ufake = FakechrootEngine(self.local, self.xmode)
+        ufake._elfpatcher = mock_elf
+        ufake._fakechroot_env_set()
+        self.assertTrue(mock_getvol.called)
+        self.assertTrue(mock_sel.called)
+        self.assertTrue(mock_fok.called)
+        self.assertTrue(mock_rpath.called)
+        self.assertTrue(mock_isvol.called)
 
-    # def test_09__run_add_script_support(self):
-    #     """FakechrootEngine._run_add_script_support()"""
-    #     pass
+    @patch('udocker.engine.fakechroot.Msg')
+    def test_08__run_invalid_options(self, mock_msg):
+        """FakechrootEngine._run_invalid_options()"""
+        mock_msg.level = 5
+        ufake = FakechrootEngine(self.local, self.xmode)
+        ufake.opt['netcoop'] = False
+        ufake.opt['portsmap'] = True
+        ufake._run_invalid_options()
+        self.assertTrue(mock_msg.called)
 
-    # TODO: missing more tests/options here
+    @patch('udocker.engine.fakechroot.FileUtil.get1stline')
+    @patch('udocker.engine.fakechroot.FileUtil.cont2host')
+    @patch('udocker.engine.fakechroot.FileUtil.find_exec')
+    @patch('udocker.engine.fakechroot.OSInfo.get_filetype')
+    @patch('udocker.engine.fakechroot.Msg')
+    def test_09__run_add_script_support(self, mock_msg, mock_ftype,
+                                        mock_findexe, mock_cont2host,
+                                        mock_1stline):
+        """FakechrootEngine._run_add_script_support()"""
+        mock_msg.level = 3
+        mock_ftype.return_value = "/bin/ls: ELF, x86-64, static"
+        ufake = FakechrootEngine(self.local, self.xmode)
+        status = ufake._run_add_script_support("/bin/ls")
+        self.assertEqual(status, [])
+
+        mock_msg.level = 3
+        mock_ftype.return_value = "/bin/ls: xxx, x86-64, yyy"
+        mock_findexe.side_effect = ["ls", ""]
+        ufake = FakechrootEngine(self.local, self.xmode)
+        status = ufake._run_add_script_support("/bin/ls")
+        self.assertEqual(status, ["/ls"])
+
+        mock_msg.level = 3
+        mock_ftype.return_value = "/bin/ls: xxx, x86-64, yyy"
+        mock_findexe.side_effect = ["", "ls"]
+        mock_cont2host.return_value = "/bin/ls"
+        mock_1stline.return_value = ""
+        ufake = FakechrootEngine(self.local, self.xmode)
+        ufake.container_root = "/ROOT"
+        status = ufake._run_add_script_support("/bin/ls")
+        self.assertEqual(status, ["/ROOT/ls"])
+
+    @patch('udocker.engine.fakechroot.FileUtil.cont2host')
+    @patch.object(FakechrootEngine, '_run_banner')
     @patch.object(FakechrootEngine, '_run_add_script_support')
     @patch.object(FakechrootEngine, '_set_cpu_affinity')
     @patch.object(FakechrootEngine, '_run_env_cleanup_list')
@@ -199,22 +272,42 @@ class FakechrootEngineTestCase(TestCase):
     @patch.object(FakechrootEngine, '_run_env_set')
     @patch.object(FakechrootEngine, '_run_invalid_options')
     @patch.object(FakechrootEngine, '_run_init')
+    @patch.object(FakechrootEngine, '_uid_check')
     @patch('udocker.engine.fakechroot.subprocess.call')
     @patch('udocker.engine.fakechroot.ElfPatcher')
     @patch('udocker.engine.fakechroot.Msg')
-    def test_10_run(self, mock_msg, mock_elfp, mock_subp,
+    def test_10_run(self, mock_msg, mock_elfp, mock_subp, mock_uidc,
                     mock_rinit, mock_rinval, mock_renv, mock_fakeenv,
-                    mock_renvclean, mock_setaff, mock_raddsup):
+                    mock_renvclean, mock_setaff, mock_raddsup,
+                    mock_runban, mock_cont2host):
         """Test10 FakechrootEngine.run()."""
+        mock_uidc.return_value = None
+        mock_rinit.return_value = ""
+        ufake = FakechrootEngine(self.local, self.xmode)
+        status = ufake.run("12345")
+        self.assertEqual(status, 2)
+
+
+        mock_uidc.return_value = None
         mock_rinit.return_value = '/bin/exec'
-        mock_elfp.return_value.check_container_path.return_value = True
+        mock_rinval.return_value = None
+        self.xmode.get_mode.return_value = 'F1'
+        mock_elfp.return_value.check_container_path.return_value = False
+        mock_renv.return_value = None
+        mock_fakeenv.return_value = None
+        mock_renvclean.return_value = None
         mock_setaff.return_value = ['1', '2']
         mock_elfp.return_value.get_container_loader.return_value = '/ROOT/xx'
         mock_raddsup.return_value = ['/ROOT/xx.sh']
+        mock_runban.return_value = None
+        mock_cont2host.return_value = "/cont/ROOT"
         mock_subp.return_value = 0
         ufake = FakechrootEngine(self.local, self.xmode)
         status = ufake.run("12345")
         self.assertEqual(status, 0)
+        self.assertTrue(mock_uidc.called)
+        self.assertTrue(mock_rinit.called)
+        self.assertTrue(mock_msg.called)
 
 
 if __name__ == '__main__':
