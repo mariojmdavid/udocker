@@ -6,8 +6,6 @@ udocker unit tests: RuncEngine
 import sys
 from unittest import TestCase, main
 from udocker.config import Config
-from udocker.container.localrepo import LocalRepository
-from udocker.engine.execmode import ExecutionMode
 from udocker.engine.runc import RuncEngine
 try:
     from unittest.mock import Mock, patch, MagicMock, mock_open
@@ -42,28 +40,57 @@ class RuncEngineTestCase(TestCase):
         Config().conf['userhome'] = "/"
         Config().conf['oskernel'] = "4.8.13"
         Config().conf['location'] = ""
-        self.local = LocalRepository()
-        self.xmode = ExecutionMode(self.local, "12345")
+        str_local = 'udocker.container.localrepo.LocalRepository'
+        self.lrepo = patch(str_local)
+        self.local = self.lrepo.start()
+        self.mock_lrepo = Mock()
+        self.local.return_value = self.mock_lrepo
+
+        str_exmode = 'udocker.engine.execmode.ExecutionMode'
+        self.execmode = patch(str_exmode)
+        self.xmode = self.execmode.start()
+        self.mock_execmode = Mock()
+        self.xmode.return_value = self.mock_execmode
 
     def tearDown(self):
-        pass
+        self.lrepo.stop()
+        self.execmode.stop()
 
-    # def test_01_init(self):
-    #     """Test01 RuncEngine() constructor."""
-    #     rcex = RuncEngine(self.local, self.xmode)
+    def test_01_init(self):
+        """Test01 RuncEngine() constructor."""
+        rcex = RuncEngine(self.local, self.xmode)
+        self.assertEqual(rcex.executable, None)
+        self.assertEqual(rcex.execution_id, None)
 
+    @patch('udocker.engine.runc.HostInfo.arch')
     @patch('udocker.engine.runc.ExecutionEngineCommon._oskernel_isgreater')
     @patch('udocker.engine.runc.ExecutionEngineCommon')
     @patch('udocker.engine.runc.FileUtil.find_file_in_dir')
-    def test_02_select_runc(self, mock_find, mock_execmode, mock_isgreater):
+    @patch('udocker.engine.runc.FileUtil.find_exec')
+    def test_02_select_runc(self, mock_findexe, mock_find, mock_execmode,
+                            mock_isgreater, mock_arch):
         """Test02 RuncEngine().select_runc()."""
-        Config().conf['arch'] = "arm"
-        mock_isgreater.return_value = False
-        mock_find.return_value = "runc-arm"
-        mock_execmode.return_value.get_mode.return_value = ""
+        Config.conf['use_runc_executable'] = ""
+        mock_findexe.return_value = "/bin/runc-arm"
         rcex = RuncEngine(self.local, self.xmode)
-        rcex.exec_mode = mock_execmode
-        # rcex.select_runc()
+        rcex.select_runc()
+        self.assertTrue(mock_findexe.called)
+
+        Config.conf['use_runc_executable'] = "UDOCKER"
+        mock_arch.return_value = "amd64"
+        mock_find.return_value = "runc-x86_64"
+        rcex = RuncEngine(self.local, self.xmode)
+        rcex.select_runc()
+        self.assertTrue(mock_arch.called)
+        self.assertTrue(mock_find.called)
+
+        Config.conf['use_runc_executable'] = "UDOCKER"
+        mock_arch.return_value = "i386"
+        mock_find.return_value = "runc-x86"
+        rcex = RuncEngine(self.local, self.xmode)
+        rcex.select_runc()
+        self.assertTrue(mock_arch.called)
+        self.assertTrue(mock_find.called)
 
     @patch('udocker.engine.runc.FileUtil.remove')
     @patch('udocker.engine.runc.FileUtil.size')
