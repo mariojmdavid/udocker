@@ -172,7 +172,6 @@ class FakechrootEngineTestCase(TestCase):
         self.assertTrue(mock_exists.called)
         self.assertEqual(out, "/sys/infin")
 
-    # TODO: implement WIP
     @patch.object(FakechrootEngine, '_get_volume_bindings')
     @patch.object(FakechrootEngine, 'select_fakechroot_so')
     @patch.object(FakechrootEngine, '_get_access_filesok')
@@ -227,7 +226,7 @@ class FakechrootEngineTestCase(TestCase):
 
     @patch('udocker.engine.fakechroot.Msg')
     def test_08__run_invalid_options(self, mock_msg):
-        """FakechrootEngine._run_invalid_options()"""
+        """Test08 FakechrootEngine._run_invalid_options()"""
         mock_msg.level = 5
         ufake = FakechrootEngine(self.local, self.xmode)
         ufake.opt['netcoop'] = False
@@ -243,7 +242,7 @@ class FakechrootEngineTestCase(TestCase):
     def test_09__run_add_script_support(self, mock_msg, mock_ftype,
                                         mock_findexe, mock_cont2host,
                                         mock_1stline):
-        """FakechrootEngine._run_add_script_support()"""
+        """Test09 FakechrootEngine._run_add_script_support()"""
         mock_msg.level = 3
         mock_ftype.return_value = "/bin/ls: ELF, x86-64, static"
         ufake = FakechrootEngine(self.local, self.xmode)
