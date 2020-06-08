@@ -548,27 +548,34 @@ class RuncEngineTestCase(TestCase):
         self.assertTrue(rcex._filebind.set_file.called)
         self.assertTrue(rcex._filebind.add_file.called)
 
-    @patch('udocker.engine.runc.subprocess.call')
-    @patch('udocker.engine.runc.Msg')
     @patch('udocker.engine.runc.FileBind')
     @patch('udocker.engine.runc.Unique')
+    @patch.object(RuncEngine, 'run_nopty')
+    @patch.object(RuncEngine, 'run_pty')
     @patch.object(RuncEngine, '_run_invalid_options')
     @patch.object(RuncEngine, '_del_mount_spec')
     @patch.object(RuncEngine, '_run_banner')
+    @patch.object(RuncEngine, '_add_devices')
     @patch.object(RuncEngine, '_add_volume_bindings')
     @patch.object(RuncEngine, '_set_spec')
+    @patch.object(RuncEngine, '_save_spec')
+    @patch.object(RuncEngine, '_proot_overlay')
     @patch.object(RuncEngine, '_run_env_set')
+    @patch.object(RuncEngine, '_mod_mount_spec')
+    @patch.object(RuncEngine, '_add_capabilities_spec')
     @patch.object(RuncEngine, '_uid_check')
     @patch.object(RuncEngine, '_run_env_cleanup_list')
     @patch.object(RuncEngine, '_load_spec')
     @patch.object(RuncEngine, 'select_runc')
     @patch.object(RuncEngine, '_run_init')
     def test_17_run(self, mock_run_init, mock_sel_runc,
-                    mock_load_spec, mock_uid_check,
-                    mock_run_env_cleanup_list, mock_env_set,
-                    mock_set_spec, mock_add_bindings,
+                    mock_load_spec, mock_run_env_cleanup_list,
+                    mock_uid_check, mock_addspecs, mock_modms,
+                    mock_env_set, mock_prooto, mock_savespec,
+                    mock_set_spec, mock_add_bindings, mock_add_dev,
                     mock_run_banner, mock_del_mount_spec, mock_inv_opt,
-                    mock_unique, mock_fbind, mock_msg, mock_call):
+                    mock_pty, mock_nopty,
+                    mock_unique, mock_fbind):
         """Test17 RuncEngine().run()."""
         mock_run_init.return_value = False
         rcex = RuncEngine(self.local, self.xmode)
@@ -576,37 +583,60 @@ class RuncEngineTestCase(TestCase):
         self.assertEqual(status, 2)
 
         mock_run_init.return_value = True
+        mock_inv_opt.return_value = None
+        mock_load_spec.return_value = False
+        mock_sel_runc.return_value = None
         mock_load_spec.return_value = False
         rcex = RuncEngine(self.local, self.xmode)
+        rcex.container_dir = "/container/ROOT"
+        rcex._filebind = mock_fbind
+        rcex._filebind.setup.return_value = None
         status = rcex.run("CONTAINERID")
         self.assertEqual(status, 4)
 
+        jload = {"container": "cxxx", "parent": "dyyy",
+                 "created": "2020-05-05T21:20:07.182447994Z",
+                 "os": "linux",
+                 "container_config": {"Tty": "false", "Cmd": ["/bin/sh"]},
+                 "Image": "sha256:aa"
+                }
         mock_run_init.return_value = True
-        mock_load_spec.return_value = True
-        mock_run_env_cleanup_list.reset_mock()
-        Config().conf['runc_capabilities'] = []
-        # rcex = RuncEngine(self.local, self.xmode)
-        # rcex.opt["hostenv"] = []
-        # status = rcex.run("CONTAINERID")
-        # self.assertTrue(mock_run_env_cleanup_list.called)
-        # self.assertEqual(status, 5)
-
-        mock_run_init.return_value = True
-        mock_load_spec.return_value = True
+        mock_inv_opt.return_value = None
+        mock_load_spec.return_value = False
+        mock_sel_runc.return_value = None
+        mock_load_spec.return_value = jload
+        mock_uid_check.return_value = None
+        mock_run_env_cleanup_list.return_value = None
+        mock_set_spec.return_value = None
+        mock_del_mount_spec.return_value = None
+        mock_add_bindings.return_value = None
+        mock_add_dev.return_value = None
+        mock_addspecs.return_value = None
+        mock_modms.return_value = None
+        mock_prooto.return_value = None
+        mock_savespec.return_value = None
         mock_unique.return_value.uuid.return_value = "EXECUTION_ID"
-        mock_run_env_cleanup_list.reset_mock()
-        mock_call.reset_mock()
+        mock_run_banner.return_value = None
+        mock_pty.return_value = 0
+        mock_nopty.return_value = 0
         rcex = RuncEngine(self.local, self.xmode)
-        rcex.runc_exec = "true"
-        rcex.container_dir = "/.udocker/containers/CONTAINER/ROOT"
-        rcex.opt["hostenv"] = []
-        # status = rcex.run("CONTAINERID")
-        # self.assertTrue(mock_run_env_cleanup_list.called)
-        # self.assertTrue(mock_call.called)
+        rcex.container_dir = "/container/ROOT"
+        rcex._filebind = mock_fbind
+        rcex._filebind.setup.return_value = None
+        status = rcex.run("CONTAINERID")
+        self.assertEqual(status, 0)
 
-    # def test_18_run_pty(self):
-    #     """Test18 RuncEngine().run_pty()."""
-    #     pass
+    @patch('udocker.engine.runc.FileBind')
+    @patch('udocker.engine.runc.subprocess.call')
+    def test_18_run_pty(self, mock_call, mock_fbind):
+        """Test18 RuncEngine().run_pty()."""
+        mock_call.return_value = 0
+        rcex = RuncEngine(self.local, self.xmode)
+        rcex.container_dir = "/container/ROOT"
+        rcex._filebind = mock_fbind
+        rcex._filebind.finish.return_value = None
+        status = rcex.run_pty("CONTAINERID")
+        self.assertEqual(status, 0)
 
     # def test_19_run_nopty(self):
     #     """Test19 RuncEngine().run_nopty()."""
