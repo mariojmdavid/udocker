@@ -197,6 +197,9 @@ class PRootEngineTestCase(TestCase):
         prex.opt["kernel"] = "5.4.0"
         status = prex.run("CONTAINERID")
         self.assertEqual(status, 5)
+        self.assertTrue(mock_run_init.called)
+        self.assertTrue(mock_call.called)
+        self.assertTrue(mock_envupd.called)
 
 
 if __name__ == '__main__':

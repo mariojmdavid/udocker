@@ -4,6 +4,9 @@ udocker unit tests: RuncEngine
 """
 
 import sys
+sys.path.append('.')
+sys.path.append('../../')
+
 from unittest import TestCase, main
 from udocker.config import Config
 from udocker.engine.runc import RuncEngine
@@ -63,12 +66,9 @@ class RuncEngineTestCase(TestCase):
         self.assertEqual(rcex.execution_id, None)
 
     @patch('udocker.engine.runc.HostInfo.arch')
-    @patch('udocker.engine.runc.ExecutionEngineCommon._oskernel_isgreater')
-    @patch('udocker.engine.runc.ExecutionEngineCommon')
     @patch('udocker.engine.runc.FileUtil.find_file_in_dir')
     @patch('udocker.engine.runc.FileUtil.find_exec')
-    def test_02_select_runc(self, mock_findexe, mock_find, mock_execmode,
-                            mock_isgreater, mock_arch):
+    def test_02_select_runc(self, mock_findexe, mock_find, mock_arch):
         """Test02 RuncEngine().select_runc()."""
         Config.conf['use_runc_executable'] = ""
         mock_findexe.return_value = "/bin/runc-arm"
@@ -92,62 +92,63 @@ class RuncEngineTestCase(TestCase):
         self.assertTrue(mock_arch.called)
         self.assertTrue(mock_find.called)
 
+    @patch('udocker.engine.runc.json.load')
+    @patch('udocker.engine.runc.FileUtil.register_prefix')
     @patch('udocker.engine.runc.FileUtil.remove')
     @patch('udocker.engine.runc.FileUtil.size')
     @patch('udocker.engine.runc.subprocess.call')
     @patch('udocker.engine.runc.os.path.realpath')
-    @patch('udocker.engine.runc.FileUtil')
-    def test_03__load_spec(self, mock_futil, mock_realpath,
-                           mock_call, mock_size, mock_rm):
+    def test_03__load_spec(self, mock_realpath, mock_call, mock_size,
+                           mock_rm, mock_reg, mock_jload):
         """Test03 RuncEngine()._load_spec()."""
-        mock_futil.reset()
-        mock_size.return_value = 1
+        mock_size.side_effect = [-1, -1]
+        mock_realpath.return_value = "/container/ROOT"
+        mock_call.return_value = 1
+        mock_rm.return_value = None
+        mock_reg.return_value = None
         rcex = RuncEngine(self.local, self.xmode)
-        rcex._container_specfile = "/config.json"
-        rcex._load_spec(True)
-        self.assertFalse(mock_rm.called)
-
-        # mock_futil.reset()
-        # mock_size.return_value = 1
-        # rcex = RuncEngine(self.conf, self.local, self.xmode)
-        # rcex._container_specfile = "/config.json"
-        # rcex._load_spec(True)
-        # # self.assertTrue(mock_rm.called)
-
-        mock_futil.reset()
-        mock_size.return_value = -1
-        mock_realpath.return_value = "/.udocker/containers/aaaaa"
-        mock_call.return_value = True
-        rcex = RuncEngine(self.local, self.xmode)
-        rcex.runc_exec = "runc"
         status = rcex._load_spec(False)
+        self.assertFalse(mock_rm.called)
+        self.assertFalse(mock_reg.called)
+        self.assertTrue(mock_call.called)
+        self.assertTrue(mock_realpath.called)
         self.assertFalse(status)
 
-        # mock_futil.reset()
-        # mock_size.return_value = -1
-        # mock_realpath.return_value = "/.udocker/containers/aaaaa"
-        # mock_call.return_value = False  # ok
-        # self.local.load_json = "JSON"
-        # rcex = RuncEngine(self.conf, self.local, self.xmode)
-        # rcex.runc_exec = "runc"
-        # with patch(BOPEN, mock_open()):
-        #     status = rcex._load_spec(False)
-        # self.assertEqual(status, "JSON")
+        jload = {"container": "cxxx", "parent": "dyyy",
+                 "created": "2020-05-05T21:20:07.182447994Z",
+                 "os": "linux",
+                 "container_config": {"Tty": "false", "Cmd": ["/bin/sh"]},
+                 "Image": "sha256:aa"
+                }
+        mock_size.side_effect = [100, 100]
+        mock_realpath.return_value = "/container/ROOT"
+        mock_call.return_value = 0
+        mock_rm.return_value = None
+        mock_reg.return_value = None
+        mock_jload.return_value = jload
+        with patch(BOPEN, mock_open()) as mopen:
+            rcex = RuncEngine(self.local, self.xmode)
+            status = rcex._load_spec(True)
+            self.assertTrue(mopen.called)
+            self.assertEqual(status, jload)
+            self.assertTrue(mock_rm.called)
+            self.assertTrue(mock_reg.called)
 
-        # mock_futil.reset()
-        # mock_size.return_value = -1
-        # mock_realpath.return_value = "/.udocker/containers/aaaaa"
-        # mock_call.return_value = False  # ok
-        # self.local.load_json = "JSON"
-        # rcex = RuncEngine(self.conf, self.local, self.xmode)
-        # rcex.runc_exec = "runc"
-        # with patch(BOPEN, mock_open()):
-        #     status = rcex._load_spec(False)
-        # self.assertEqual(status, None)
-
-    # def test_04__save_spec(self):
-    #     """Test04 RuncEngine()._save_spec()."""
-    #     pass
+    @patch('udocker.engine.runc.json.dump')
+    def test_04__save_spec(self, mock_jdump):
+        """Test04 RuncEngine()._save_spec()."""
+        jdump = {"container": "cxxx", "parent": "dyyy",
+                 "created": "2020-05-05T21:20:07.182447994Z",
+                 "os": "linux",
+                 "container_config": {"Tty": "false", "Cmd": ["/bin/sh"]},
+                 "Image": "sha256:aa"
+                }
+        mock_jdump.return_value = jdump
+        with patch(BOPEN, mock_open()) as mopen:
+            rcex = RuncEngine(self.local, self.xmode)
+            status = rcex._save_spec()
+            self.assertTrue(mopen.called)
+            self.assertTrue(status)
 
     @patch('udocker.engine.runc.os.getgid')
     @patch('udocker.engine.runc.os.getuid')
@@ -222,11 +223,11 @@ class RuncEngineTestCase(TestCase):
         rcex._container_specjson["linux"]["uidMappings"] = dict()
         rcex._container_specjson["linux"]["gidMappings"] = dict()
         rcex.opt["cwd"] = "/"
-        rcex.opt["env"] = [("AA", "aa"), ("BB", "bb")]
+        rcex.opt["env"] = [("BB", "bb")]
         rcex.opt["cmd"] = "bash"
         rcex.opt["hostname"] = ""
         json_obj = rcex._set_spec()
-        # self.assertNotIn("AA=aa", json_obj["process"]["env"])
+        self.assertNotIn("AA=aa", json_obj["process"]["env"])
 
         # uid and gid mappings
         mock_realpath.return_value = "/.udocker/containers/aaaaaa/ROOT"
@@ -265,15 +266,17 @@ class RuncEngineTestCase(TestCase):
         rcex._uid_check()
         self.assertFalse(mock_msg.called)
 
+        mock_msg.level = 3
         rcex = RuncEngine(self.local, self.xmode)
         rcex.opt = dict()
         rcex.opt["user"] = "user01"
         rcex._uid_check()
-        # self.assertTrue(mock_msg.called)
+        self.assertTrue(mock_msg.called)
 
-    # def test_07__add_capabilities_spec(self):
-    #     """Test07 RuncEngine()._add_capabilities_spec()."""
-    #     pass
+    def test_07__add_capabilities_spec(self):
+        """Test07 RuncEngine()._add_capabilities_spec()."""
+        rcex = RuncEngine(self.local, self.xmode)
+        rcex._add_capabilities_spec()
 
     # def test_08__add_device_spec(self):
     #     """Test08 RuncEngine()._add_device_spec()."""

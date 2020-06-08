@@ -115,5 +115,8 @@ ENV/
 .project
 .pydevproject
 
+# VSCODE
+.vscode
+
 rm-udtmp.sh
 

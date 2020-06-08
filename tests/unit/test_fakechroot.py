@@ -3,6 +3,10 @@
 udocker unit tests: FakechrootEngine
 """
 
+import sys
+sys.path.append('.')
+sys.path.append('../../')
+
 from unittest import TestCase, main
 from udocker.config import Config
 from udocker.engine.fakechroot import FakechrootEngine
@@ -276,7 +280,7 @@ class FakechrootEngineTestCase(TestCase):
     @patch('udocker.engine.fakechroot.subprocess.call')
     @patch('udocker.engine.fakechroot.ElfPatcher')
     @patch('udocker.engine.fakechroot.Msg')
-    def test_10_run(self, mock_msg, mock_elfp, mock_subp, mock_uidc,
+    def test_10_run(self, mock_msg, mock_elfp, mock_call, mock_uidc,
                     mock_rinit, mock_rinval, mock_renv, mock_fakeenv,
                     mock_renvclean, mock_setaff, mock_raddsup,
                     mock_runban, mock_cont2host):
@@ -301,13 +305,14 @@ class FakechrootEngineTestCase(TestCase):
         mock_raddsup.return_value = ['/ROOT/xx.sh']
         mock_runban.return_value = None
         mock_cont2host.return_value = "/cont/ROOT"
-        mock_subp.return_value = 0
+        mock_call.return_value = 0
         ufake = FakechrootEngine(self.local, self.xmode)
         status = ufake.run("12345")
         self.assertEqual(status, 0)
         self.assertTrue(mock_uidc.called)
         self.assertTrue(mock_rinit.called)
         self.assertTrue(mock_msg.called)
+        self.assertTrue(mock_call.called)
 
 
 if __name__ == '__main__':
