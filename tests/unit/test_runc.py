@@ -526,23 +526,21 @@ class RuncEngineTestCase(TestCase):
         self.assertTrue(mock_isfile.called)
         # self.assertFalse(mock_fbadd.called)
 
-    def test_15__run_invalid_options(self):
-        """Test15 RuncEngine()._run_invalid_options()."""
-        pass
-
-    @patch('udocker.engine.fakechroot.Msg')
+    @patch('udocker.engine.runc.Msg')
     def test_15__run_invalid_options(self, mock_msg):
         """Test15 RuncEngine()._run_invalid_options()."""
-        mock_msg.level = 5
+        mock_msg.level = 0
         rcex = RuncEngine(self.local, self.xmode)
         rcex.opt['netcoop'] = False
-        rcex.opt['portsmap'] = False
+        rcex.opt['portsmap'] = True
         rcex._run_invalid_options()
-        self.assertFalse(mock_msg.called)
+        self.assertTrue(mock_msg.called)
 
-    # def test_16__proot_overlay(self):
-    #     """Test16 RuncEngine()._proot_overlay()."""
-    #     pass
+    def test_16__proot_overlay(self):
+        """Test16 RuncEngine()._proot_overlay()."""
+        rcex = RuncEngine(self.local, self.xmode)
+        status = rcex._run_invalid_options()
+
 
     @patch('udocker.engine.runc.subprocess.call')
     @patch('udocker.engine.runc.Msg')
