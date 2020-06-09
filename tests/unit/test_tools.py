@@ -79,11 +79,34 @@ class UdockerToolsTestCase(TestCase):
         status = utools.is_available()
         self.assertTrue(status)
 
-    # def test_06_purge(self):
-    #     """Test06 UdockerTools().purge()."""
+    @patch('udocker.tools.FileUtil.remove')
+    @patch('udocker.tools.FileUtil.register_prefix')
+    @patch('udocker.tools.os.listdir')
+    def test_06_purge(self, mock_lsdir, mock_fureg, mock_furm):
+        """Test06 UdockerTools().purge()."""
+        mock_lsdir.side_effect = [["f1", "f2"], ["f3", "f4"]]
+        mock_fureg.side_effect = [None, None, None, None]
+        mock_furm.side_effect = [None, None, None, None]
+        utools = UdockerTools(self.local)
+        utools.purge()
+        self.assertTrue(mock_lsdir.call_count, 2)
+        self.assertTrue(mock_fureg.call_count, 4)
+        self.assertTrue(mock_furm.call_count, 4)
 
-    # def test_07__download(self):
-    #     """Test07 UdockerTools()._download()."""
+    @patch('udocker.tools.GetURL')
+    @patch('udocker.tools.FileUtil.remove')
+    @patch('udocker.tools.FileUtil.mktmp')
+    def test_07__download(self, mock_fumktmp, mock_furm, mock_geturl):
+        """Test07 UdockerTools()._download()."""
+        url = "https://down/file"
+        mock_fumktmp.return_value = "/tmp/tmpf"
+        mock_furm.return_value = None
+        utools = UdockerTools(self.local)
+        utools.curl = mock_geturl
+        utools.curl.get = ("HTTP/1.1 200 OK",
+                           "Content-Type: application/octet-stream")
+        status = utools._download(url)
+        self.assertTrue(mock_fumktmp.called)
 
     # def test_08__get_file(self):
     #     """Test08 UdockerTools()._get_file()."""
