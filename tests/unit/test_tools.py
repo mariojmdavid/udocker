@@ -93,20 +93,20 @@ class UdockerToolsTestCase(TestCase):
         self.assertTrue(mock_fureg.call_count, 4)
         self.assertTrue(mock_furm.call_count, 4)
 
-    @patch('udocker.tools.GetURL')
-    @patch('udocker.tools.FileUtil.remove')
-    @patch('udocker.tools.FileUtil.mktmp')
-    def test_07__download(self, mock_fumktmp, mock_furm, mock_geturl):
-        """Test07 UdockerTools()._download()."""
-        url = "https://down/file"
-        mock_fumktmp.return_value = "/tmp/tmpf"
-        mock_furm.return_value = None
-        utools = UdockerTools(self.local)
-        utools.curl = mock_geturl
-        utools.curl.get = ("HTTP/1.1 200 OK",
-                           "Content-Type: application/octet-stream")
-        status = utools._download(url)
-        self.assertTrue(mock_fumktmp.called)
+    # @patch('udocker.tools.GetURL')
+    # @patch('udocker.tools.FileUtil.remove')
+    # @patch('udocker.tools.FileUtil.mktmp')
+    # def test_07__download(self, mock_fumktmp, mock_furm, mock_geturl):
+    #     """Test07 UdockerTools()._download()."""
+    #     url = "https://down/file"
+    #     mock_fumktmp.return_value = "/tmp/tmpf"
+    #     mock_furm.return_value = None
+    #     utools = UdockerTools(self.local)
+    #     utools.curl = mock_geturl
+    #     utools.curl.get = ("HTTP/1.1 200 OK",
+    #                        "Content-Type: application/octet-stream")
+    #     status = utools._download(url)
+    #     self.assertTrue(mock_fumktmp.called)
 
     # def test_08__get_file(self):
     #     """Test08 UdockerTools()._get_file()."""
