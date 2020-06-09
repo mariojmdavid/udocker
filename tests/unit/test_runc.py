@@ -273,9 +273,23 @@ class RuncEngineTestCase(TestCase):
         rcex._uid_check()
         self.assertTrue(mock_msg.called)
 
-    # def test_07__add_capabilities_spec(self):
-    #     """Test07 RuncEngine()._add_capabilities_spec()."""
-    #     pass
+    def test_07__add_capabilities_spec(self):
+        """Test07 RuncEngine()._add_capabilities_spec()."""
+        rcex = RuncEngine(self.local, self.xmode)
+        Config.conf['runc_capabilities'] = ""
+        status = rcex._add_capabilities_spec()
+        self.assertEqual(status, None)
+
+        rcex = RuncEngine(self.local, self.xmode)
+        Config.conf['runc_capabilities'] = ["CAP_KILL",
+                    "CAP_NET_BIND_SERVICE", "CAP_CHOWN"]
+        rcex._container_specjson = dict()
+        rcex._container_specjson["process"] = dict()
+        rcex._container_specjson["process"]["capabilities"] = dict()
+        rcex._container_specjson["process"]["capabilities"]["ambient"] = dict()
+        rcex._add_capabilities_spec()
+        res = rcex._container_specjson["process"]["capabilities"]["ambient"]
+        self.assertEqual(res, Config.conf['runc_capabilities'])
 
     @patch('udocker.engine.runc.HostInfo')
     @patch('udocker.engine.runc.os.minor')
@@ -321,9 +335,20 @@ class RuncEngineTestCase(TestCase):
         self.assertTrue(mock_osmaj.called)
         self.assertTrue(mock_osmin.called)
 
-    # def test_09__add_devices(self):
-    #     """Test09 RuncEngine()._add_device_spec()."""
-    #     pass
+    @patch('udocker.engine.runc.NvidiaMode')
+    @patch.object(RuncEngine, '_add_device_spec')
+    def test_09__add_devices(self, mock_adddecspec, mock_nv):
+        """Test09 RuncEngine()._add_devices()."""
+        mock_adddecspec.side_effect = [True, True, True]
+        mock_nv.return_value.get_mode.return_value = True
+        mock_nv.return_value.get_devices.return_value = ['/dev/nvidia', ]
+        rcex = RuncEngine(self.local, self.xmode)
+        rcex.opt = dict()
+        rcex.opt["devices"] = ["/dev/open-mx", "/dev/myri0"]
+        rcex._add_devices()
+        self.assertTrue(mock_adddecspec.call_count, 3)
+        self.assertTrue(mock_nv.return_value.get_mode.called)
+        self.assertTrue(mock_nv.return_value.get_devices.called)
 
     def test_10__add_mount_spec(self):
         """Test10 RuncEngine()._add_mount_spec()."""
