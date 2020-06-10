@@ -191,11 +191,105 @@ class UdockerToolsTestCase(TestCase):
     # def test_12_get_installinfo(self):
     #     """Test12 UdockerTools().get_installinfo()."""
 
-    # def test_13__install_logic(self):
-    #     """Test13 UdockerTools()._install_logic()."""
+    @patch.object(UdockerTools, '_install')
+    @patch.object(UdockerTools, '_verify_version')
+    @patch.object(UdockerTools, '_get_file')
+    @patch.object(UdockerTools, '_get_mirrors')
+    @patch('udocker.tools.FileUtil.remove')
+    def test_13__install_logic(self, mock_furm, mock_getmirr, mock_getfile,
+                               mock_verversion, mock_install):
+        """Test13 UdockerTools()._install_logic()."""
+        mock_furm.return_value = None
+        mock_getmirr.return_value = "https://down.pt/udocker-1.2.4.tar.gz"
+        mock_getfile.return_value = "udocker-1.2.4.tar.gz"
+        mock_verversion.return_value = (True, "1.2.4")
+        mock_install.return_value = True
+        utools = UdockerTools(self.local)
+        status = utools._install_logic(False)
+        self.assertTrue(status)
+        self.assertTrue(mock_getmirr.called)
+        self.assertTrue(mock_getfile.called)
+        self.assertTrue(mock_verversion.called)
+        self.assertTrue(mock_install.called)
 
-    # def test_14_install(self):
-    #     """Test14 UdockerTools().install()."""
+        mock_furm.return_value = None
+        mock_getmirr.return_value = "https://down.pt/udocker-1.2.4.tar.gz"
+        mock_getfile.return_value = "udocker-1.2.4.tar.gz"
+        mock_verversion.return_value = (False, "")
+        mock_install.return_value = True
+        utools = UdockerTools(self.local)
+        status = utools._install_logic(True)
+        self.assertTrue(status)
+
+        mock_furm.return_value = None
+        mock_getmirr.return_value = "https://down.pt/udocker-1.2.4.tar.gz"
+        mock_getfile.return_value = "udocker-1.2.4.tar.gz"
+        mock_verversion.return_value = (False, "")
+        mock_install.return_value = True
+        utools = UdockerTools(self.local)
+        status = utools._install_logic(False)
+        self.assertFalse(status)
+
+    @patch.object(UdockerTools, '_instructions')
+    @patch.object(UdockerTools, 'get_installinfo')
+    @patch.object(UdockerTools, '_install_logic')
+    @patch.object(UdockerTools, 'is_available')
+    def test_14_install(self, mock_isavail, mock_instlog, mock_getinfo,
+                        mock_instruct):
+        """Test14 UdockerTools().install()."""
+        Config.conf['autoinstall'] = True
+        Config.conf['tarball'] = "udocker-1.2.4.tar.gz"
+        Config.conf['tarball_release'] = "1.2.4"
+        Config.conf['installretry'] = 2
+        mock_isavail.return_value = True
+        utools = UdockerTools(self.local)
+        status = utools.install(False)
+        self.assertTrue(status)
+        self.assertTrue(mock_isavail.called)
+
+        Config.conf['autoinstall'] = False
+        Config.conf['tarball'] = "udocker-1.2.4.tar.gz"
+        Config.conf['tarball_release'] = "1.2.4"
+        Config.conf['installretry'] = 2
+        mock_isavail.return_value = False
+        utools = UdockerTools(self.local)
+        status = utools.install(False)
+        self.assertEqual(status, None)
+        self.assertFalse(utools._autoinstall)
+
+        Config.conf['autoinstall'] = False
+        Config.conf['tarball'] = ""
+        Config.conf['tarball_release'] = "1.2.4"
+        Config.conf['installretry'] = 2
+        mock_isavail.return_value = True
+        utools = UdockerTools(self.local)
+        status = utools.install(False)
+        self.assertTrue(status)
+        self.assertEqual(utools._tarball, "")
+
+        Config.conf['autoinstall'] = True
+        Config.conf['tarball'] = "udocker-1.2.4.tar.gz"
+        Config.conf['tarball_release'] = "1.2.4"
+        Config.conf['installretry'] = 2
+        mock_isavail.return_value = False
+        mock_instlog.side_effect = [False, True]
+        mock_getinfo.side_effect = [None, None]
+        utools = UdockerTools(self.local)
+        status = utools.install(False)
+        self.assertTrue(status)
+        self.assertTrue(mock_instlog.call_count, 2)
+        self.assertTrue(mock_getinfo.call_count, 2)
+
+        Config.conf['autoinstall'] = True
+        Config.conf['tarball'] = "udocker-1.2.4.tar.gz"
+        Config.conf['tarball_release'] = "1.2.4"
+        Config.conf['installretry'] = 2
+        mock_isavail.return_value = False
+        mock_instlog.side_effect = [False, False]
+        mock_getinfo.side_effect = [None, None]
+        utools = UdockerTools(self.local)
+        status = utools.install(False)
+        self.assertFalse(status)
 
 
 if __name__ == '__main__':
