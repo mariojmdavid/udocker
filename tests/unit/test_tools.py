@@ -197,8 +197,35 @@ class UdockerToolsTestCase(TestCase):
             self.assertEqual(status, (True, "1.2.4"))
             self.assertTrue(mock_furm.called)
 
-    # def test_10__install(self):
-    #     """Test10 UdockerTools()._install()."""
+    @patch('udocker.tools.os.path.basename')
+    @patch('udocker.tools.FileUtil')
+    @patch('udocker.tools.os.path.isfile')
+    def test_10__install(self, mock_isfile, mock_futil,
+                         mock_osbase):
+        """Test10 UdockerTools()._install()."""
+        tfile = ""
+        mock_isfile.return_value = False
+        utools = UdockerTools(self.local)
+        status = utools._install(tfile)
+        self.assertFalse(status)
+
+        tinfo1 = TarInfo("udocker_dir/bin/ls")
+        tinfo2 = TarInfo("udocker_dir/lib/lib1")
+        tfile = "udocker.tar"
+        mock_isfile.return_value = True
+        mock_futil.return_value.chmod.return_value = None
+        mock_futil.return_value.rchmod.side_effect = [None, None, None, None]
+        mock_osbase.side_effect = ["ls", "ls", "lib1", "lib1"]
+        self.local.create_repo.return_value = None
+        with patch.object(tarfile, 'open', autospec=True) as open_mock:
+            open_mock.return_value.getmembers.side_effect = [[tinfo1, tinfo2],
+                                                             [tinfo1, tinfo2]]
+            open_mock.return_value.extract.side_effect = [None, None]
+            utools = UdockerTools(self.local)
+            status = utools._install(tfile)
+            self.assertTrue(status)
+            self.assertTrue(mock_futil.called)
+            self.assertTrue(mock_futil.return_value.rchmod.call_count, 4)
 
     def test_11__get_mirrors(self):
         """Test11 UdockerTools()._get_mirrors()."""
