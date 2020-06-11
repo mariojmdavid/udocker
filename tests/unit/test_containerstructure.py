@@ -24,7 +24,7 @@ class ContainerStructureTestCase(TestCase):
         Config().conf['hostauth_list'] = ("/etc/passwd", "/etc/group")
         Config().conf['cmd'] = "/bin/bash"
         Config().conf['cpu_affinity_exec_tools'] = (["numactl", "-C", "%s", "--", ],
-                                                ["taskset", "-c", "%s", ])
+                                                    ["taskset", "-c", "%s", ])
         Config().conf['valid_host_env'] = "HOME"
         Config().conf['username'] = "user"
         Config().conf['userhome'] = "/"

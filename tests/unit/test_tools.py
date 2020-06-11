@@ -17,6 +17,10 @@ try:
     from unittest.mock import Mock, patch, MagicMock, mock_open
 except ImportError:
     from mock import Mock, patch, MagicMock, mock_open
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 if sys.version_info[0] >= 3:
     BUILTINS = "builtins"
@@ -234,8 +238,19 @@ class UdockerToolsTestCase(TestCase):
         status = utools._get_mirrors(mirrors)
         self.assertEqual(status, [mirrors])
 
-    # def test_12_get_installinfo(self):
+    # @patch.object(UdockerTools, '_get_file')
+    # @patch.object(UdockerTools, '_get_mirrors')
+    # def test_12_get_installinfo(self, mock_mirr, mock_getf):
     #     """Test12 UdockerTools().get_installinfo()."""
+    #     Config.conf['installinfo'] = "/home/info.json"
+    #     mock_mirr.return_value = ["/home/info.json"]
+    #     mock_getf.return_value = "info.json"
+    #     subuid_line = StringIO('user:100000:65536')
+    #     with patch(BOPEN) as mopen:
+    #         mopen.return_value.__iter__ = (
+    #             lambda self: iter(subuid_line.readline, ''))
+    #         utools = UdockerTools(self.local)
+    #         status = utools.get_installinfo()
 
     @patch.object(UdockerTools, '_install')
     @patch.object(UdockerTools, '_verify_version')
