@@ -10,7 +10,9 @@ sys.path.append('../../')
 
 from unittest import TestCase, main
 from udocker.config import Config
+from udocker.utils.curl import CurlHeader
 from udocker.tools import UdockerTools
+from tarfile import TarInfo
 try:
     from unittest.mock import Mock, patch, MagicMock, mock_open
 except ImportError:
@@ -94,20 +96,32 @@ class UdockerToolsTestCase(TestCase):
         self.assertTrue(mock_fureg.call_count, 4)
         self.assertTrue(mock_furm.call_count, 4)
 
-    # @patch('udocker.tools.GetURL')
-    # @patch('udocker.tools.FileUtil.remove')
-    # @patch('udocker.tools.FileUtil.mktmp')
-    # def test_07__download(self, mock_fumktmp, mock_furm, mock_geturl):
-    #     """Test07 UdockerTools()._download()."""
-    #     url = "https://down/file"
-    #     mock_fumktmp.return_value = "/tmp/tmpf"
-    #     mock_furm.return_value = None
-    #     utools = UdockerTools(self.local)
-    #     utools.curl = mock_geturl
-    #     utools.curl.get = ("HTTP/1.1 200 OK",
-    #                        "Content-Type: application/octet-stream")
-    #     status = utools._download(url)
-    #     self.assertTrue(mock_fumktmp.called)
+    @patch('udocker.tools.GetURL.get')
+    @patch('udocker.tools.FileUtil.remove')
+    @patch('udocker.tools.FileUtil.mktmp')
+    def test_07__download(self, mock_fumktmp, mock_furm, mock_geturl):
+        """Test07 UdockerTools()._download()."""
+        url = "https://down/file"
+        hdr = CurlHeader()
+        hdr.data["X-ND-HTTPSTATUS"] = "HTTP/1.1 200 OK"
+        mock_fumktmp.return_value = "/tmp/tmpf"
+        mock_furm.return_value = None
+        mock_geturl.return_value = (hdr, "content type...")
+        utools = UdockerTools(self.local)
+        status = utools._download(url)
+        self.assertTrue(mock_fumktmp.called)
+        self.assertEqual(status, "/tmp/tmpf")
+
+        url = "https://down/file"
+        hdr = CurlHeader()
+        hdr.data["X-ND-HTTPSTATUS"] = "HTTP/1.1 401 FAIL"
+        mock_fumktmp.return_value = "/tmp/tmpf"
+        mock_furm.return_value = None
+        mock_geturl.return_value = (hdr, "content type...")
+        utools = UdockerTools(self.local)
+        status = utools._download(url)
+        self.assertTrue(mock_furm.called)
+        self.assertEqual(status, "")
 
     @patch('udocker.tools.os.path.isfile')
     @patch('udocker.tools.os.path.realpath')
@@ -139,6 +153,7 @@ class UdockerToolsTestCase(TestCase):
         self.assertEqual(status, "/tmp/file")
 
     @patch.object(UdockerTools, '_version_isok')
+    @patch('udocker.tools.tarfile.TarInfo')
     @patch('udocker.tools.FileUtil.remove')
     @patch('udocker.tools.FileUtil.getdata')
     @patch('udocker.tools.os.path.basename')
@@ -146,7 +161,8 @@ class UdockerToolsTestCase(TestCase):
     @patch('udocker.tools.os.path.isfile')
     def test_09__verify_version(self, mock_isfile, mock_fumktmp,
                                 mock_osbase, mock_fugetdata,
-                                mock_furm, mock_versionok):
+                                mock_furm, mock_tarinfo,
+                                mock_versionok):
         """Test09 UdockerTools()._verify_version()."""
         tball = "/home/udocker.tar"
         mock_isfile.return_value = False
@@ -164,19 +180,22 @@ class UdockerToolsTestCase(TestCase):
         self.assertTrue(mock_fumktmp.called)
         self.assertEqual(status, (False, ""))
 
-        # tball = "/home/udocker.tar"
-        # mock_isfile.return_value = True
-        # mock_fumktmp.return_value = "/home/tmp"
-        # mock_osbase.return_value = "VERSION"
-        # mock_fugetdata.return_value = "1.2.4"
-        # mock_furm.return_value = None
-        # mock_versionok.return_value = True
-        # with patch.object(tarfile, 'open', autospec=True) as open_mock:
-        #     open_mock.return_value.getmembers.return_value = ["a", "udocker_dir/lib/VERSION"]
-        #     open_mock.return_value.extract.return_value = None
-        #     utools = UdockerTools(self.local)
-        #     status = utools._verify_version(tball)
-        #     self.assertEqual(status, (True, "1.2.4"))
+        tball = "/home/udocker.tar"
+        tinfo1 = TarInfo("udocker_dir/lib/VERSION")
+        tinfo2 = TarInfo("a")
+        mock_isfile.return_value = True
+        mock_fumktmp.return_value = "/home/tmp"
+        mock_osbase.return_value = "VERSION"
+        mock_fugetdata.return_value = "1.2.4"
+        mock_furm.return_value = None
+        mock_versionok.return_value = True
+        with patch.object(tarfile, 'open', autospec=True) as open_mock:
+            open_mock.return_value.getmembers.return_value = [tinfo2, tinfo1]
+            open_mock.return_value.extract.return_value = None
+            utools = UdockerTools(self.local)
+            status = utools._verify_version(tball)
+            self.assertEqual(status, (True, "1.2.4"))
+            self.assertTrue(mock_furm.called)
 
     # def test_10__install(self):
     #     """Test10 UdockerTools()._install()."""
