@@ -238,19 +238,23 @@ class UdockerToolsTestCase(TestCase):
         status = utools._get_mirrors(mirrors)
         self.assertEqual(status, [mirrors])
 
-    # @patch.object(UdockerTools, '_get_file')
-    # @patch.object(UdockerTools, '_get_mirrors')
-    # def test_12_get_installinfo(self, mock_mirr, mock_getf):
-    #     """Test12 UdockerTools().get_installinfo()."""
-    #     Config.conf['installinfo'] = "/home/info.json"
-    #     mock_mirr.return_value = ["/home/info.json"]
-    #     mock_getf.return_value = "info.json"
-    #     subuid_line = StringIO('user:100000:65536')
-    #     with patch(BOPEN) as mopen:
-    #         mopen.return_value.__iter__ = (
-    #             lambda self: iter(subuid_line.readline, ''))
-    #         utools = UdockerTools(self.local)
-    #         status = utools.get_installinfo()
+    @patch.object(UdockerTools, '_get_file')
+    @patch.object(UdockerTools, '_get_mirrors')
+    @patch('udocker.tools.json.load')
+    def test_12_get_installinfo(self, mock_jload, mock_mirr, mock_getf):
+        """Test12 UdockerTools().get_installinfo()."""
+        Config.conf['installinfo'] = "/home/info.json"
+        res = {"tarversion": "1.2.4"}
+        mock_jload.return_value = {"tarversion": "1.2.4"}
+        mock_mirr.return_value = ["/home/info.json"]
+        mock_getf.return_value = "info.json"
+        subuid_line = StringIO('{"tarversion": "1.2.4"}')
+        with patch(BOPEN) as mopen:
+            mopen.return_value.__iter__ = (
+                lambda self: iter(subuid_line.readline, ''))
+            utools = UdockerTools(self.local)
+            status = utools.get_installinfo()
+            self.assertEqual(status, res)
 
     @patch.object(UdockerTools, '_install')
     @patch.object(UdockerTools, '_verify_version')
