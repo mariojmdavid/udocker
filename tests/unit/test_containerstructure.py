@@ -299,23 +299,38 @@ class ContainerStructureTestCase(TestCase):
         status = prex.clone_fromfile("clone_file")
         self.assertEqual(status, "123456")
 
-    # @patch('udocker.container.structure.FileUtil')
-    # def test_10__apply_whiteouts(self, mock_futil):
-    #     """Test10 ContainerStructure()._apply_whiteouts()."""
-    #     with patch.object(subprocess, 'Popen') as mock_popen:
-    #         mock_popen.return_value.stdout.readline.side_effect = ["/aaa", "", ]
-    #         prex = ContainerStructure(self.local)
-    #         status = prex._apply_whiteouts("tarball", "/tmp")
-    #     self.assertTrue(status)
-    #     self.assertFalse(mock_futil.called)
+    @patch('udocker.container.structure.os.listdir')
+    @patch('udocker.container.structure.os.path.isdir')
+    @patch('udocker.container.structure.os.path.dirname')
+    @patch('udocker.container.structure.os.path.basename')
+    @patch('udocker.container.structure.Uprocess.get_output')
+    @patch('udocker.container.structure.HostInfo.cmd_has_option')
+    @patch('udocker.container.structure.FileUtil.remove')
+    def test_10__apply_whiteouts(self, mock_furm, mock_hinfocmd,
+                                 mock_uprocget, mock_base, mock_dir,
+                                 mock_isdir, mock_lsdir):
+        """Test10 ContainerStructure()._apply_whiteouts()."""
+        mock_hinfocmd.return_value = False
+        mock_uprocget.return_value = ""
+        prex = ContainerStructure(self.local)
+        prex._apply_whiteouts("tarball", "/tmp")
+        self.assertTrue(mock_hinfocmd.called)
+        self.assertTrue(mock_uprocget.called)
 
-    #     with patch.object(subprocess, 'Popen') as mock_popen:
-    #         mock_popen.return_value.stdout.readline.side_effect = [
-    #             "/a/.wh.x", "", ]
-    #         prex = ContainerStructure(self.local)
-    #         status = prex._apply_whiteouts("tarball", "/tmp")
-    #     self.assertTrue(status)
-    #     self.assertTrue(mock_futil.called)
+        mock_hinfocmd.return_value = False
+        mock_uprocget.return_value = "/d1/.wh.aa\n/d1/.wh.bb\n"
+        mock_base.side_effect = [".wh.aa", ".wh.bb", ".wh.aa", ".wh.bb"]
+        mock_dir.side_effect = ["/d1", "/d2"]
+        mock_isdir.side_effect = [True, True]
+        mock_lsdir.side_effect = [".wh.aa", ".wh.bb"]
+        mock_furm.side_effect = [None, None]
+        prex = ContainerStructure(self.local)
+        prex._apply_whiteouts("tarball", "/tmp")
+        self.assertTrue(mock_hinfocmd.called)
+        self.assertTrue(mock_uprocget.called)
+        self.assertTrue(mock_base.called)
+        self.assertTrue(mock_dir.called)
+        self.assertTrue(mock_furm.called)
 
     @patch('udocker.container.structure.HostInfo')
     @patch('udocker.container.structure.subprocess.call')
