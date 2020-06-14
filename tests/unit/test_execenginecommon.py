@@ -159,11 +159,60 @@ class ExecutionEngineCommonTestCase(TestCase):
         status = ex_eng._create_mountpoint(hpath, cpath, True)
         self.assertFalse(status)
 
-    # def test_07__check_volumes(self):
-    #     """Test07 ExecutionEngineCommon()._check_volumes()."""
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     status = ex_eng._check_volumes()
-    #     self.assertTrue(status)
+    @patch.object(ExecutionEngineCommon, '_create_mountpoint')
+    @patch('udocker.engine.base.os.path.exists')
+    @patch('udocker.engine.base.Uvolume.split')
+    def test_07__check_volumes(self, mock_uvolsplit, mock_exists,
+                               mock_crmpoint):
+        """Test07 ExecutionEngineCommon()._check_volumes()."""
+        mock_uvolsplit.return_value = ("HOSTDIR", "CONTDIR")
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["vol"] = list()
+        ex_eng.opt["vol"].append("HOSTDIR:CONTDIR")
+        status = ex_eng._check_volumes()
+        self.assertFalse(status)
+        self.assertTrue(mock_uvolsplit.called)
+
+        mock_uvolsplit.return_value = ("/HOSTDIR", "CONTDIR")
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["vol"] = list()
+        ex_eng.opt["vol"].append("/HOSTDIR:CONTDIR")
+        status = ex_eng._check_volumes()
+        self.assertFalse(status)
+
+        Config.conf['sysdirs_list'] = ["/HOSTDIR"]
+        mock_exists.return_value = False
+        mock_uvolsplit.return_value = ("/HOSTDIR", "/CONTDIR")
+        mock_crmpoint.return_value = False
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["vol"] = list()
+        ex_eng.opt["vol"].append("/HOSTDIR:/CONTDIR")
+        status = ex_eng._check_volumes()
+        self.assertFalse(status)
+        self.assertEqual(ex_eng.opt["vol"], list())
+        self.assertTrue(mock_exists.called)
+        self.assertTrue(mock_crmpoint.called)
+
+        Config.conf['sysdirs_list'] = ["/sys"]
+        mock_exists.return_value = False
+        mock_uvolsplit.return_value = ("/HOSTDIR", "/CONTDIR")
+        mock_crmpoint.return_value = False
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["vol"] = list()
+        ex_eng.opt["vol"].append("/HOSTDIR:/CONTDIR")
+        status = ex_eng._check_volumes()
+        self.assertFalse(status)
+        self.assertTrue(mock_exists.called)
+
+        Config.conf['sysdirs_list'] = ["/sys"]
+        mock_exists.return_value = True
+        mock_uvolsplit.return_value = ("/HOSTDIR", "/CONTDIR")
+        mock_crmpoint.return_value = True
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["vol"] = list()
+        ex_eng.opt["vol"].append("/HOSTDIR:/CONTDIR")
+        status = ex_eng._check_volumes()
+        self.assertTrue(status)
 
     # @patch('udocker.engine.base.os.path.exists')
     # def test_09__create_mountpoint(self, mock_exists):
