@@ -399,13 +399,47 @@ class ExecutionEngineCommonTestCase(TestCase):
         self.assertEqual(status, ("/x", []))
         self.assertTrue(mock_meta.call_count, 9)
 
-    # def test_17__check_env(self):
-    #     """Test ExecutionEngineCommon()._check_env()."""
-    #     pass
+    @patch('udocker.engine.base.os.path.isfile')
+    @patch('udocker.engine.base.os.path.islink')
+    @patch('udocker.engine.base.FileBind')
+    @patch.object(ExecutionEngineCommon, '_is_mountpoint')
+    def test_15__select_auth_files(self, mock_ismpoint, mock_fbind, mock_islink,
+                                   mock_isfile):
+        """Test15 ExecutionEngineCommon()._select_auth_files()."""
+        resp = "/fbdir/#etc#passwd"
+        resg = "/fbdir/#etc#group"
+        mock_fbind.return_value.orig_dir = "/fbdir"
+        mock_islink.side_effect = [True, True]
+        mock_isfile.side_effect = [True, True]
+        mock_ismpoint.side_effect = ["", "", "", ""]
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        status = ex_eng._select_auth_files()
+        self.assertTrue(mock_islink.call_count, 2)
+        self.assertTrue(mock_isfile.call_count, 2)
+        self.assertTrue(mock_ismpoint.call_count, 2)
+        # self.assertEqual(status, resp)
 
-    # def test_20__select_auth_files(self):
-    #     """Test ExecutionEngineCommon()._select_auth_files()."""
-    #     pass
+        resp = "/etc/passwd"
+        resg = "/etc/group"
+        mock_fbind.orig_dir.side_effect = ["/fbdir", "/fbdir"]
+        mock_islink.side_effect = [False, False]
+        mock_isfile.side_effect = [False, False]
+        mock_ismpoint.side_effect = ["", "", "", ""]
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        status = ex_eng._select_auth_files()
+        self.assertEqual(status, (resp, resg))
+
+        resp = "/d/etc/passwd"
+        resg = "/d/etc/group"
+        mock_fbind.orig_dir.side_effect = ["/fbdir", "/fbdir"]
+        mock_islink.side_effect = [False, False]
+        mock_isfile.side_effect = [False, False]
+        mock_ismpoint.side_effect = ["/d/etc/passwd", "/d/etc/passwd",
+                                     "/d/etc/group", "/d/etc/group"]
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        status = ex_eng._select_auth_files()
+        self.assertTrue(mock_ismpoint.call_count, 4)
+        self.assertEqual(status, (resp, resg))
 
     # @patch('udocker.engine.base.Msg')
     # @patch('udocker.engine.base.NixAuthentication.get_user')
