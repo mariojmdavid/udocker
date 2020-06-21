@@ -661,122 +661,61 @@ class ExecutionEngineCommonTestCase(TestCase):
         self.assertEqual(ex_eng.opt["shell"], "/bin/sh")
         self.assertEqual(ex_eng.opt["gecos"], "*UDOCKER*")
 
-    # @patch('udocker.engine.base.NixAuthentication.get_group')
-    # @patch('udocker.engine.base.NixAuthentication.add_group')
-    # @patch('udocker.engine.base.NixAuthentication.add_user')
-    # @patch('udocker.engine.base.os.getgroups')
-    # @patch('udocker.engine.base.FileUtil')
-    # @patch('udocker.engine.base.Msg')
-    # @patch('udocker.engine.base.NixAuthentication')
-    # def test_21__create_user(self, mock_nix, mock_msg,
-    #                          mock_futil, mock_groups, mock_adduser,
-    #                          mock_addgroup, mock_getgroup):
-    #     """Test21 ExecutionEngineCommon()._create_user()."""
-    #     container_auth = NixAuthentication("", "")
-    #     container_auth.passwd_file = ""
-    #     container_auth.group_file = ""
-    #     host_auth = NixAuthentication("", "")
-    #     self.conf['uid'] = 1000
-    #     self.conf['gid'] = 1000
-    #
-    #     mock_adduser.return_value = False
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["uid"] = ""
-    #     ex_eng.opt["gid"] = ""
-    #     ex_eng.opt["user"] = ""
-    #     ex_eng.opt["home"] = ""
-    #     ex_eng.opt["shell"] = ""
-    #     ex_eng.opt["gecos"] = ""
-    #     status = ex_eng._create_user(container_auth, host_auth)
-    #     # self.assertFalse(status)
-    #     self.assertEqual(ex_eng.opt["uid"], "1000")
-    #     self.assertEqual(ex_eng.opt["gid"], "1000")
-    #     self.assertEqual(ex_eng.opt["user"], "udoc1000")
-    #     self.assertEqual(ex_eng.opt["home"], "/home/udoc1000")
-    #     self.assertEqual(ex_eng.opt["shell"], "/bin/sh")
-    #     self.assertEqual(ex_eng.opt["gecos"], "*UDOCKER*")
-    #
-    #     mock_adduser.return_value = False
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["uid"] = "60000"
-    #     ex_eng.opt["gid"] = "60000"
-    #     ex_eng.opt["user"] = "someuser"
-    #     ex_eng.opt["home"] = ""
-    #     ex_eng.opt["shell"] = "/bin/false"
-    #     ex_eng.opt["gecos"] = "*XXX*"
-    #     status = ex_eng._create_user(container_auth, host_auth)
-    #     # self.assertFalse(status)
-    #     self.assertEqual(ex_eng.opt["uid"], "60000")
-    #     self.assertEqual(ex_eng.opt["gid"], "60000")
-    #     self.assertEqual(ex_eng.opt["user"], "someuser")
-    #     self.assertEqual(ex_eng.opt["home"], "/home/someuser")
-    #     self.assertEqual(ex_eng.opt["shell"], "/bin/false")
-    #     self.assertEqual(ex_eng.opt["gecos"], "*XXX*")
-    #
-    #     mock_adduser.return_value = False
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["uid"] = "60000"
-    #     ex_eng.opt["gid"] = "60000"
-    #     ex_eng.opt["user"] = "someuser"
-    #     ex_eng.opt["home"] = "/home/batata"
-    #     ex_eng.opt["shell"] = "/bin/false"
-    #     ex_eng.opt["gecos"] = "*XXX*"
-    #     status = ex_eng._create_user(container_auth, host_auth)
-    #     # self.assertFalse(status)
-    #     self.assertEqual(ex_eng.opt["uid"], "60000")
-    #     self.assertEqual(ex_eng.opt["gid"], "60000")
-    #     self.assertEqual(ex_eng.opt["user"], "someuser")
-    #     self.assertEqual(ex_eng.opt["home"], "/home/batata")
-    #     self.assertEqual(ex_eng.opt["shell"], "/bin/false")
-    #     self.assertEqual(ex_eng.opt["gecos"], "*XXX*")
-    #
-    #     mock_adduser.return_value = True
-    #     mock_getgroup.return_value = ("", "", "")
-    #     mock_addgroup.return_value = True
-    #     mock_groups.return_valueUE = ()
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["uid"] = "60000"
-    #     ex_eng.opt["gid"] = "60000"
-    #     ex_eng.opt["user"] = "someuser"
-    #     ex_eng.opt["home"] = "/home/batata"
-    #     ex_eng.opt["shell"] = "/bin/false"
-    #     ex_eng.opt["gecos"] = "*XXX*"
-    #     status = ex_eng._create_user(container_auth, host_auth)
-    #     self.assertTrue(status)
-    #     self.assertEqual(ex_eng.opt["uid"], "60000")
-    #     self.assertEqual(ex_eng.opt["gid"], "60000")
-    #     self.assertEqual(ex_eng.opt["user"], "someuser")
-    #     self.assertEqual(ex_eng.opt["home"], "/home/batata")
-    #     self.assertEqual(ex_eng.opt["shell"], "/bin/false")
-    #     self.assertEqual(ex_eng.opt["gecos"], "*XXX*")
-    #     self.assertEqual(ex_eng.opt["hostauth"], True)
-    #     mgroup = mock_nix.return_value.get_group
-    #     self.assertTrue(mgroup.called_once_with("60000"))
-    #
-    #     mock_adduser.return_value = True
-    #     mock_getgroup.return_value = ("", "", "")
-    #     mock_addgroup.return_value = True
-    #     mock_groups.return_value = (80000,)
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["uid"] = "60000"
-    #     ex_eng.opt["gid"] = "60000"
-    #     ex_eng.opt["user"] = "someuser"
-    #     ex_eng.opt["home"] = "/home/batata"
-    #     ex_eng.opt["shell"] = "/bin/false"
-    #     ex_eng.opt["gecos"] = "*XXX*"
-    #     status = ex_eng._create_user(container_auth, host_auth)
-    #     self.assertTrue(status)
-    #     self.assertEqual(ex_eng.opt["uid"], "60000")
-    #     self.assertEqual(ex_eng.opt["gid"], "60000")
-    #     self.assertEqual(ex_eng.opt["user"], "someuser")
-    #     self.assertEqual(ex_eng.opt["home"], "/home/batata")
-    #     self.assertEqual(ex_eng.opt["shell"], "/bin/false")
-    #     self.assertEqual(ex_eng.opt["gecos"], "*XXX*")
-    #     self.assertEqual(ex_eng.opt["hostauth"], True)
-    #     ggroup = mock_getgroup
-    #     self.assertTrue(ggroup.called_once_with("60000"))
-    #     agroup = mock_addgroup
-    #     self.assertTrue(agroup.called_once_with("G80000", "80000"))
+    @patch.object(ExecutionEngineCommon, '_fill_user')
+    @patch('udocker.engine.base.os.getgroups')
+    @patch('udocker.engine.base.FileUtil.copyto')
+    @patch('udocker.engine.base.FileUtil.mktmp')
+    @patch('udocker.engine.base.FileUtil.umask')
+    @patch('udocker.engine.base.NixAuthentication')
+    def test_21__create_user(self, mock_nix, mock_umask, mock_mktmp,
+                             mock_cpto, mock_getgrp, mock_fillu):
+        """Test21 ExecutionEngineCommon()._create_user()."""
+        cont_auth = mock_nix
+        host_auth = mock_nix
+        cont_auth.passwd_file.return_value = "/c/etc/passwd"
+        cont_auth.group_file.return_value = "/c/etc/grpup"
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["containerauth"] = True
+        status = ex_eng._create_user(cont_auth, host_auth)
+        self.assertTrue(status)
+        self.assertFalse(ex_eng.opt["hostauth"])
+
+        cont_auth = mock_nix
+        host_auth = mock_nix
+        res = ("/tmp/passwd:/etc/passwd","/tmp/group:/etc/group")
+        cont_auth.passwd_file.return_value = "/c/etc/passwd"
+        cont_auth.group_file.return_value = "/c/etc/group"
+        mock_umask.side_effect = [None, None]
+        mock_mktmp.side_effect = ["/tmp/passwd", "/tmp/group"]
+        mock_cpto.side_effect = [None, None]
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["containerauth"] = False
+        ex_eng.opt["hostauth"] = True
+        status = ex_eng._create_user(cont_auth, host_auth)
+        self.assertTrue(status)
+        self.assertTrue(ex_eng.opt["hostauth"])
+        self.assertEqual(ex_eng.hostauth_list, res)
+
+        cont_auth = mock_nix
+        host_auth = mock_nix
+        res = ("/tmp/passwd:/etc/passwd","/tmp/group:/etc/group")
+        cont_auth.passwd_file.return_value = "/c/etc/passwd"
+        cont_auth.group_file.return_value = "/c/etc/group"
+        mock_umask.side_effect = [None, None]
+        mock_mktmp.side_effect = ["/tmp/passwd", "/tmp/group"]
+        mock_cpto.side_effect = [None, None]
+        mock_fillu.return_value = None
+        mock_nix.add_user.return_value = None
+        host_auth.get_group.return_value = ("", "x1", "x2")
+        mock_nix.add_group.return_value = None
+        mock_getgrp.return_value = [1000]
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["containerauth"] = False
+        ex_eng.opt["hostauth"] = False
+        status = ex_eng._create_user(cont_auth, host_auth)
+        self.assertTrue(status)
+        self.assertTrue(ex_eng.opt["hostauth"])
+        self.assertEqual(ex_eng.hostauth_list, res)
 
     @patch('udocker.engine.base.Msg')
     @patch('udocker.engine.base.os.path.basename')
@@ -803,36 +742,45 @@ class ExecutionEngineCommonTestCase(TestCase):
         ex_eng._run_env_cleanup_dict()
         self.assertEqual(mock_osenv.return_value, res)
 
-    # @patch('udocker.engine.base.os.environ')
-    # def test_24__run_env_cleanup_list(self, mock_osenv):
-    #     """Test24 ExecutionEngineCommon()._run_env_cleanup_list()."""
-    #     Config.conf['valid_host_env'] = ("HOME",)
-    #     Config.conf['invalid_host_env'] = ("USERNAME",)
-    #     mock_osenv.return_value = {'HOME': '/', 'USERNAME': 'user', }
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["env"] = Uenv()
-    #     ex_eng._run_env_cleanup_list()
-    #     self.assertEqual(ex_eng.opt["env"], {'HOME': '/', })
+    @patch('udocker.engine.base.os.environ')
+    def test_24__run_env_cleanup_list(self, mock_osenv):
+        """Test24 ExecutionEngineCommon()._run_env_cleanup_list()."""
+        Config.conf['valid_host_env'] = ("HOME",)
+        Config.conf['invalid_host_env'] = ("USERNAME",)
+        mock_osenv.return_value = {'HOME': '/', 'USERNAME': 'user', }
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["hostenv"] = "HOME"
+        ex_eng.opt["env"] = Uenv()
+        ex_eng._run_env_cleanup_list()
+        self.assertEqual(ex_eng.opt["env"].env, dict())
 
-    # def test_25__run_env_set(self):
-    #     """Test25 ExecutionEngineCommon()._run_env_set()."""
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["home"] = "/"
-    #     ex_eng.opt["user"] = "user"
-    #     ex_eng.opt["uid"] = "1000"
-    #     ex_eng.container_root = "/croot"
-    #     ex_eng.container_id = "2717add4-e6f6-397c-9019-74fa67be439f"
-    #     ex_eng.container_names = ['cna[]me', ]
-    #     self.xmode.get_mode.return_value = "P1"
-    #     ex_eng._run_env_set()
-    #     self.assertTrue("USER=" + ex_eng.opt["user"] in ex_eng.opt["env"])
-    #     self.assertTrue("LOGNAME=" + ex_eng.opt["user"] in ex_eng.opt["env"])
-    #     self.assertTrue("USERNAME=" + ex_eng.opt["user"] in ex_eng.opt["env"])
-    #     self.assertTrue("SHLVL=0" in ex_eng.opt["env"])
-    #     self.assertTrue("container_root=/croot" in ex_eng.opt["env"])
+    @patch('udocker.engine.base.HostInfo.username')
+    def test_25__run_env_set(self, mock_hiuname):
+        """Test25 ExecutionEngineCommon()._run_env_set()."""
+        mock_hiuname.return_value = "user1"
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["home"] = "/"
+        ex_eng.opt["user"] = "user1"
+        ex_eng.opt["uid"] = "1000"
+        ex_eng.container_root = "/croot"
+        ex_eng.container_id = "2717add4-e6f6-397c-9019-74fa67be439f"
+        ex_eng.container_names = ['cna[]me', ]
+        self.xmode.get_mode.return_value = "P1"
+        ex_eng._run_env_set()
+        self.assertEqual(ex_eng.opt["env"].env["USER"], "user1")
+        self.assertEqual(ex_eng.opt["env"].env["LOGNAME"], "user1")
+        self.assertEqual(ex_eng.opt["env"].env["USERNAME"], "user1")
+        self.assertEqual(ex_eng.opt["env"].env["SHLVL"], "0")
 
-    # def test_26__run_env_cmdoptions(self):
-    #     """Test26 ExecutionEngineCommon()._run_env_cmdoptions()."""
+    @patch('udocker.engine.base.FileUtil.getdata')
+    def test_26__run_env_cmdoptions(self, mock_getdata):
+        """Test26 ExecutionEngineCommon()._run_env_cmdoptions()."""
+        mock_getdata.return_value = "USER=user1\nSHLVL=0"
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["envfile"] = ["/dir/env"]
+        ex_eng.opt["env"] = Uenv()
+        ex_eng._run_env_cmdoptions()
+        self.assertEqual(ex_eng.opt["env"].env["USER"], "user1")
 
     @patch('udocker.engine.base.MountPoint')
     @patch.object(ExecutionEngineCommon, '_check_exposed_ports')
