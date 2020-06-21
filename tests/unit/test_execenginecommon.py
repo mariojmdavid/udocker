@@ -441,6 +441,25 @@ class ExecutionEngineCommonTestCase(TestCase):
         self.assertTrue(mock_ismpoint.call_count, 4)
         self.assertEqual(status, (resp, resg))
 
+    def test_16__validate_user_str(self):
+        """Test16 ExecutionEngineCommon()._validate_user_str()."""
+        userstr = ""
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        status = ex_eng._validate_user_str(userstr)
+        self.assertEqual(status, dict())
+
+        userstr = "user1"
+        res = {"user": userstr}
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        status = ex_eng._validate_user_str(userstr)
+        self.assertEqual(status, res)
+
+        userstr = "1000:1000"
+        res = {"uid": "1000", "gid": "1000"}
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        status = ex_eng._validate_user_str(userstr)
+        self.assertEqual(status, res)
+
     # @patch('udocker.engine.base.Msg')
     # @patch('udocker.engine.base.NixAuthentication.get_user')
     # @patch.object(ExecutionEngineCommon, '_create_user')
