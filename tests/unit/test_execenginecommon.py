@@ -460,78 +460,205 @@ class ExecutionEngineCommonTestCase(TestCase):
         status = ex_eng._validate_user_str(userstr)
         self.assertEqual(status, res)
 
-    # @patch('udocker.engine.base.Msg')
-    # @patch('udocker.engine.base.NixAuthentication.get_user')
-    # @patch.object(ExecutionEngineCommon, '_create_user')
-    # def test_21__setup_container_user(self, mock_cruser,
-    #                                   mock_getuser, mock_msg):
-    #     """Test ExecutionEngineCommon()._setup_container_user()."""
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     status = ex_eng._setup_container_user("0:0")
-    #     self.assertFalse(status)
+    def test_17__user_from_str(self):
+        """Test17 ExecutionEngineCommon()._user_from_str()."""
+        userstr = ""
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        status = ex_eng._user_from_str(userstr)
+        self.assertEqual(status, (False, dict()))
 
-    #     mock_getuser.return_value = ("", "", "", "", "", "")
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["vol"] = ""
-    #     ex_eng.opt["hostauth"] = False
-    #     status = ex_eng._setup_container_user("0:0")
-    #     self.assertTrue(status)
-    #     self.assertTrue(mock_cruser.called)
+        userstr = "user1"
+        res = {"user": userstr}
+        str_exmode = 'udocker.helper.nixauth.NixAuthentication'
+        nixauth = patch(str_exmode)
+        auth = nixauth.start()
+        mock_auth = Mock()
+        auth.return_value = mock_auth
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["hostauth"] = True
+        auth.get_user.return_value = ("user1", "1000", "1000", "usr",
+                                      "/home/user", "/bin/bash")
+        status = ex_eng._user_from_str(userstr, host_auth=auth)
+        self.assertEqual(status, (True, res))
+        auth = nixauth.stop()
 
-    #     mock_getuser.return_value = ("root", 0, 0, "", "", "")
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["vol"] = ""
-    #     ex_eng.opt["hostauth"] = False
-    #     status = ex_eng._setup_container_user("0:0")
-    #     self.assertTrue(status)
-    #     self.assertTrue(mock_cruser.called)
+        userstr = "user1"
+        res = {"user": userstr}
+        str_exmode = 'udocker.helper.nixauth.NixAuthentication'
+        nixauth = patch(str_exmode)
+        auth = nixauth.start()
+        mock_auth = Mock()
+        auth.return_value = mock_auth
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["hostauth"] = False
+        auth.get_user.return_value = ("user1", "1000", "1000", "usr",
+                                      "/home/user", "/bin/bash")
+        status = ex_eng._user_from_str(userstr, container_auth=auth)
+        self.assertEqual(status, (True, res))
+        auth = nixauth.stop()
 
-    #     mock_getuser.return_value = ("", "", "", "", "", "")
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["vol"] = ""
-    #     ex_eng.opt["hostauth"] = True
-    #     status = ex_eng._setup_container_user("0:0")
-    #     self.assertFalse(status)
+        userstr = "1000:1000"
+        res = {"uid": "1000", "gid": "1000"}
+        str_exmode = 'udocker.helper.nixauth.NixAuthentication'
+        nixauth = patch(str_exmode)
+        auth = nixauth.start()
+        mock_auth = Mock()
+        auth.return_value = mock_auth
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["hostauth"] = True
+        auth.get_user.return_value = ("user1", "1000", "1000", "usr",
+                                      "/home/user", "/bin/bash")
+        status = ex_eng._user_from_str(userstr, host_auth=auth)
+        self.assertEqual(status, (True, res))
+        auth = nixauth.stop()
 
-    #     mock_getuser.return_value = ("root", 0, 0, "", "", "")
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["vol"] = ""
-    #     ex_eng.opt["hostauth"] = True
-    #     status = ex_eng._setup_container_user("0:0")
-    #     self.assertTrue(status)
-    #     self.assertTrue(mock_cruser.called)
+    @patch('udocker.engine.base.HostInfo')
+    @patch('udocker.engine.base.NixAuthentication')
+    @patch.object(ExecutionEngineCommon, '_create_user')
+    @patch.object(ExecutionEngineCommon, '_is_mountpoint')
+    @patch.object(ExecutionEngineCommon, '_user_from_str')
+    @patch.object(ExecutionEngineCommon, '_select_auth_files')
+    def test_18__setup_container_user(self, mock_selauth, mock_ustr,
+                                      mock_ismpoint,
+                                      mock_cruser, mock_auth, mock_hinfo):
+        """Test18 ExecutionEngineCommon()._setup_container_user()."""
+        user = "invuser"
+        mock_selauth.return_value = ("/etc/passwd", "/etc/group")
+        mock_ustr.return_value = (False, {"uid": "100", "gid": "50"})
+        mock_auth.side_effect = [None, None]
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        status = ex_eng._setup_container_user(user)
+        self.assertFalse(status)
 
-    #     mock_getuser.return_value = ("", "", "", "", "", "")
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["vol"] = ""
-    #     ex_eng.opt["hostauth"] = False
-    #     status = ex_eng._setup_container_user("")
-    #     self.assertTrue(status)
-    #     self.assertTrue(mock_cruser.called)
+        user = ""
+        mock_selauth.return_value = ("/etc/passwd", "/etc/group")
+        mock_ustr.return_value = (True, {"uid": "0", "gid": "0"})
+        mock_auth.side_effect = [None, None]
+        mock_hinfo.return_value.username.return_value = "root"
+        mock_hinfo.uid = 0
+        mock_hinfo.gid = 0
+        mock_ismpoint.side_effect = [True, True]
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        status = ex_eng._setup_container_user(user)
+        self.assertTrue(status)
 
-    #     mock_getuser.return_value = ("root", 0, 0, "", "", "")
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["vol"] = ""
-    #     ex_eng.opt["hostauth"] = False
-    #     status = ex_eng._setup_container_user("")
-    #     self.assertTrue(status)
-    #     self.assertTrue(mock_cruser.called)
+        user = ""
+        mock_selauth.return_value = ("/etc/passwd", "/etc/group")
+        mock_ustr.return_value = (True, {"uid": "0", "gid": "0"})
+        mock_auth.side_effect = [None, None]
+        mock_hinfo.return_value.username.return_value = "root"
+        mock_hinfo.uid = 0
+        mock_hinfo.gid = 0
+        mock_ismpoint.side_effect = [False, False]
+        mock_cruser.return_value = None
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["user"] = ""
+        ex_eng.opt["hostauth"] = True
+        status = ex_eng._setup_container_user(user)
+        self.assertFalse(status)
+        self.assertFalse(mock_cruser.called)
 
-    #     mock_getuser.return_value = ("", "", "", "", "", "")
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["vol"] = ""
-    #     ex_eng.opt["hostauth"] = True
-    #     status = ex_eng._setup_container_user("")
-    #     self.assertFalse(status)
+        user = ""
+        mock_selauth.return_value = ("/etc/passwd", "/etc/group")
+        mock_ustr.return_value = (True, {"uid": "0", "gid": "0"})
+        mock_auth.side_effect = [None, None]
+        mock_hinfo.return_value.username.return_value = "root"
+        mock_hinfo.uid = 0
+        mock_hinfo.gid = 0
+        mock_ismpoint.side_effect = [False, False]
+        mock_cruser.return_value = None
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["user"] = ""
+        ex_eng.opt["hostauth"] = False
+        ex_eng.opt["containerauth"] = False
+        status = ex_eng._setup_container_user(user)
+        self.assertTrue(status)
+        self.assertTrue(mock_cruser.called)
 
-    #     mock_getuser.return_value = ("", 100, 0, "", "", "")
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["vol"] = ""
-    #     ex_eng.opt["hostauth"] = False
-    #     status = ex_eng._setup_container_user("0:0")
-    #     self.assertTrue(status)
-    #     self.assertTrue(mock_cruser.called)
-    #     self.assertEqual(ex_eng.opt["user"], 'root')
+    @patch('udocker.engine.base.HostInfo')
+    @patch('udocker.engine.base.NixAuthentication')
+    @patch.object(ExecutionEngineCommon, '_create_user')
+    @patch.object(ExecutionEngineCommon, '_is_mountpoint')
+    @patch.object(ExecutionEngineCommon, '_user_from_str')
+    @patch.object(ExecutionEngineCommon, '_select_auth_files')
+    def test_19__set_cont_user_noroot(self, mock_selauth, mock_ustr,
+                                      mock_ismpoint,
+                                      mock_cruser, mock_auth,
+                                      mock_hinfo):
+        """Test19 ExecutionEngineCommon()._setup_container_user_noroot()."""
+        user = "invuser"
+        mock_selauth.return_value = ("/etc/passwd", "/etc/group")
+        mock_ustr.return_value = (False, {"uid": "100", "gid": "50"})
+        mock_auth.side_effect = [None, None]
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        status = ex_eng._setup_container_user_noroot(user)
+        self.assertFalse(status)
+
+        user = ""
+        mock_selauth.return_value = ("/etc/passwd", "/etc/group")
+        mock_ustr.return_value = (True, {"uid": "1000", "gid": "1000"})
+        mock_auth.side_effect = [None, None]
+        mock_hinfo.return_value.username.return_value = "u1"
+        mock_hinfo.uid = 0
+        mock_hinfo.gid = 0
+        mock_ismpoint.side_effect = [True, True]
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        status = ex_eng._setup_container_user_noroot(user)
+        self.assertTrue(status)
+
+        user = ""
+        mock_selauth.return_value = ("/etc/passwd", "/etc/group")
+        mock_ustr.return_value = (True, {"uid": "1000", "gid": "1000"})
+        mock_auth.side_effect = [None, None]
+        mock_hinfo.return_value.username.return_value = "u1"
+        mock_hinfo.uid = 0
+        mock_hinfo.gid = 0
+        mock_ismpoint.side_effect = [False, False]
+        mock_cruser.return_value = None
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["user"] = ""
+        ex_eng.opt["hostauth"] = True
+        status = ex_eng._setup_container_user_noroot(user)
+        self.assertFalse(status)
+        self.assertFalse(mock_cruser.called)
+
+        user = ""
+        mock_selauth.return_value = ("/etc/passwd", "/etc/group")
+        mock_ustr.return_value = (True, {"uid": "1000", "gid": "1000"})
+        mock_auth.side_effect = [None, None]
+        mock_hinfo.return_value.username.return_value = "u1"
+        mock_hinfo.uid = 0
+        mock_hinfo.gid = 0
+        mock_ismpoint.side_effect = [False, False]
+        mock_cruser.return_value = None
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["user"] = ""
+        ex_eng.opt["hostauth"] = False
+        ex_eng.opt["containerauth"] = False
+        status = ex_eng._setup_container_user_noroot(user)
+        self.assertTrue(status)
+        self.assertTrue(mock_cruser.called)
+
+    @patch('udocker.engine.base.HostInfo')
+    @patch('udocker.engine.base.NixAuthentication')
+    def test_20__fill_user(self, mock_auth, mock_hinfo):
+        """Test20 ExecutionEngineCommon()._fill_user()."""
+        mock_auth.return_value.get_home.return_value = "/home/u1"
+        mock_hinfo.uid = 1000
+        mock_hinfo.gid = 1000
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["user"] = ""
+        ex_eng.opt["uid"] = ""
+        ex_eng.opt["gid"] = ""
+        ex_eng.opt["bindhome"] = True
+        ex_eng.opt["shell"] = ""
+        ex_eng.opt["gecos"] = ""
+        ex_eng._fill_user()
+        self.assertEqual(ex_eng.opt["user"], "udoc1000")
+        self.assertEqual(ex_eng.opt["uid"], "1000")
+        self.assertEqual(ex_eng.opt["gid"], "1000")
+        self.assertEqual(ex_eng.opt["shell"], "/bin/sh")
+        self.assertEqual(ex_eng.opt["gecos"], "*UDOCKER*")
 
     # @patch('udocker.engine.base.NixAuthentication.get_group')
     # @patch('udocker.engine.base.NixAuthentication.add_group')

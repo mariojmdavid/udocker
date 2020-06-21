@@ -324,8 +324,8 @@ class RuncEngineTestCase(TestCase):
         mock_chr.return_value = False
         mock_osmaj.return_value = 0
         mock_osmin.return_value = 6
-        mock_hi.return_value.uid = 0
-        mock_hi.return_value.gid = 0
+        mock_hi.uid = 0
+        mock_hi.gid = 0
         rcex = RuncEngine(self.local, self.xmode)
         rcex._container_specjson = dict()
         rcex._container_specjson["linux"] = dict()
