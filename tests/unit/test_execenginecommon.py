@@ -8,6 +8,7 @@ sys.path.append('.')
 sys.path.append('../../')
 
 from udocker.engine.base import ExecutionEngineCommon
+from udocker.utils.uenv import Uenv
 from udocker.config import Config
 from udocker.container.localrepo import LocalRepository
 from unittest import TestCase, main
@@ -667,10 +668,10 @@ class ExecutionEngineCommonTestCase(TestCase):
     # @patch('udocker.engine.base.FileUtil')
     # @patch('udocker.engine.base.Msg')
     # @patch('udocker.engine.base.NixAuthentication')
-    # def test_22__create_user(self, mock_nix, mock_msg,
+    # def test_21__create_user(self, mock_nix, mock_msg,
     #                          mock_futil, mock_groups, mock_adduser,
     #                          mock_addgroup, mock_getgroup):
-    #     """Test ExecutionEngineCommon()._create_user()."""
+    #     """Test21 ExecutionEngineCommon()._create_user()."""
     #     container_auth = NixAuthentication("", "")
     #     container_auth.passwd_file = ""
     #     container_auth.group_file = ""
@@ -777,187 +778,139 @@ class ExecutionEngineCommonTestCase(TestCase):
     #     agroup = mock_addgroup
     #     self.assertTrue(agroup.called_once_with("G80000", "80000"))
 
-    # TODO: to be implemented
-    def test_23__uid_check_noroot(self):
-        """Test ExecutionEngineCommon()._uid_check_noroot()."""
-        pass
-
-    # TODO: to be implemented
-    def test_24__setup_container_user_noroot(self):
-        """Test ExecutionEngineCommon()._setup_container_user_noroot()."""
-        pass
-
     @patch('udocker.engine.base.Msg')
     @patch('udocker.engine.base.os.path.basename')
-    def test_25__run_banner(self, mock_base, mock_msg):
-        """Test ExecutionEngineCommon()._run_banner()."""
+    def test_22__run_banner(self, mock_base, mock_msg):
+        """Test22 ExecutionEngineCommon()._run_banner()."""
+        mock_base.return_value = "ls"
         ex_eng = ExecutionEngineCommon(self.local, self.xmode)
         ex_eng._run_banner("/bin/bash")
         ex_eng.container_id = "CONTAINERID"
+        self.assertTrue(mock_msg.called)
         self.assertTrue(mock_base.called_once_with("/bin/bash"))
 
-    # @patch('udocker.engine.base.os')
-    # def test_26__run_env_cleanup_dict(self, mock_os):
-    #     """Test ExecutionEngineCommon()._run_env_cleanup_dict()."""
-    #     self.conf['valid_host_env'] = ("HOME",)
-    #     mock_os.return_value.environ.return_value = {'HOME': '/', 'USERNAME': 'user', }
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng._run_env_cleanup_dict()
-    #     self.assertEqual(mock_os.return_value.environ.return_value, {'HOME': '/', })
+    @patch('udocker.engine.base.os.environ.copy')
+    @patch('udocker.engine.base.os.environ')
+    def test_23__run_env_cleanup_dict(self, mock_osenv, mock_osenvcp):
+        """Test23 ExecutionEngineCommon()._run_env_cleanup_dict()."""
+        res = {'HOME': '/', }
+        Config.conf['valid_host_env'] = ("HOME",)
+        Config.conf['invalid_host_env'] = ("USERNAME",)
+        mock_osenvcp.return_value = {'HOME': '/', 'USERNAME': 'user', }
+        mock_osenv.return_value = {'HOME': '/', }
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        ex_eng.opt["hostenv"] = {'HOME': '/', }
+        ex_eng._run_env_cleanup_dict()
+        self.assertEqual(mock_osenv.return_value, res)
 
     # @patch('udocker.engine.base.os.environ')
-    # def test_27__run_env_cleanup_list(self, mock_osenv):
-    #     """Test ExecutionEngineCommon()._run_env_cleanup_list()."""
-    #     self.conf['valid_host_env'] = ("HOME",)
+    # def test_24__run_env_cleanup_list(self, mock_osenv):
+    #     """Test24 ExecutionEngineCommon()._run_env_cleanup_list()."""
+    #     Config.conf['valid_host_env'] = ("HOME",)
+    #     Config.conf['invalid_host_env'] = ("USERNAME",)
     #     mock_osenv.return_value = {'HOME': '/', 'USERNAME': 'user', }
     #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+    #     ex_eng.opt["env"] = Uenv()
     #     ex_eng._run_env_cleanup_list()
-    #     self.assertEqual(mock_osenv, {'HOME': '/', })
+    #     self.assertEqual(ex_eng.opt["env"], {'HOME': '/', })
 
-    # TODO: to be implemented
-    def test_28__run_env_get(self):
-        """Test ExecutionEngineCommon()._run_env_get()."""
-        pass
+    # def test_25__run_env_set(self):
+    #     """Test25 ExecutionEngineCommon()._run_env_set()."""
+    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+    #     ex_eng.opt["home"] = "/"
+    #     ex_eng.opt["user"] = "user"
+    #     ex_eng.opt["uid"] = "1000"
+    #     ex_eng.container_root = "/croot"
+    #     ex_eng.container_id = "2717add4-e6f6-397c-9019-74fa67be439f"
+    #     ex_eng.container_names = ['cna[]me', ]
+    #     self.xmode.get_mode.return_value = "P1"
+    #     ex_eng._run_env_set()
+    #     self.assertTrue("USER=" + ex_eng.opt["user"] in ex_eng.opt["env"])
+    #     self.assertTrue("LOGNAME=" + ex_eng.opt["user"] in ex_eng.opt["env"])
+    #     self.assertTrue("USERNAME=" + ex_eng.opt["user"] in ex_eng.opt["env"])
+    #     self.assertTrue("SHLVL=0" in ex_eng.opt["env"])
+    #     self.assertTrue("container_root=/croot" in ex_eng.opt["env"])
 
-    def test_29__run_env_set(self):
-        """Test ExecutionEngineCommon()._run_env_set()."""
-        # self._init()
-        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-        ex_eng.opt["home"] = "/"
-        ex_eng.opt["user"] = "user"
-        ex_eng.opt["uid"] = "1000"
-        ex_eng.container_root = "/croot"
-        ex_eng.container_id = "2717add4-e6f6-397c-9019-74fa67be439f"
-        ex_eng.container_names = ['cna[]me', ]
-        ex_eng.exec_mode = MagicMock()
-        ex_eng.exec_mode.get_mode.return_value = "P1"
-        ex_eng._run_env_set()
-        # self.assertTrue("USER=" + ex_eng.opt["user"] in ex_eng.opt["env"])
-        # self.assertTrue("LOGNAME=" + ex_eng.opt["user"] in ex_eng.opt["env"])
-        # self.assertTrue("USERNAME=" + ex_eng.opt["user"] in ex_eng.opt["env"])
-        # self.assertTrue("SHLVL=0" in ex_eng.opt["env"])
-        # self.assertTrue("container_root=/croot" in ex_eng.opt["env"])
+    # def test_26__run_env_cmdoptions(self):
+    #     """Test26 ExecutionEngineCommon()._run_env_cmdoptions()."""
 
+    @patch('udocker.engine.base.MountPoint')
     @patch.object(ExecutionEngineCommon, '_check_exposed_ports')
     @patch.object(ExecutionEngineCommon, '_set_volume_bindings')
     @patch.object(ExecutionEngineCommon, '_check_executable')
     @patch.object(ExecutionEngineCommon, '_check_paths')
     @patch.object(ExecutionEngineCommon, '_setup_container_user')
+    @patch.object(ExecutionEngineCommon, '_run_env_cmdoptions')
     @patch.object(ExecutionEngineCommon, '_run_load_metadata')
-    @patch('udocker.container.localrepo.LocalRepository.get_container_name', autospec=True)
-    def test_30__run_init(self, mock_getcname, mock_loadmeta, mock_setupuser,
-                          mock_chkpaths, mock_chkexec, mock_setvol, mock_chkports):
-        """Test ExecutionEngineCommon()._run_init()."""
-        mock_getcname.return_value = "cname"
+    def test_27__run_init(self, mock_loadmeta, mock_envcmd,
+                          mock_setupuser,
+                          mock_chkpaths, mock_chkexec, mock_setvol,
+                          mock_chkports, mock_mpoint):
+        """Test27 ExecutionEngineCommon()._run_init()."""
+        # mock_getcname.return_value = "cname"
+        Config.conf['location'] = ""
+        mock_loadmeta.return_value = ("", "dummy",)
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        status = ex_eng._run_init("2717add4-e6f6-397c-9019-74fa67be439f")
+        self.assertEqual(status, "")
+        self.assertTrue(mock_loadmeta.called)
+
+        Config.conf['location'] = "/container_dir"
         mock_loadmeta.return_value = ("/container_dir", "dummy",)
-        mock_setupuser.return_value = True
-        mock_chkpaths.return_value = True
-        mock_chkexec.return_value = True
-        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-        status = ex_eng._run_init("2717add4-e6f6-397c-9019-74fa67be439f")
-        self.assertTrue(status)
-        self.assertEqual(ex_eng.container_root, "/container_dir/ROOT")
-
+        mock_envcmd.return_value = None
+        mock_chkports.return_value = None
         mock_setupuser.return_value = False
-        mock_chkpaths.return_value = True
-        mock_chkexec.return_value = True
+        self.local.get_container_name.return_value = "cont_name"
         ex_eng = ExecutionEngineCommon(self.local, self.xmode)
         status = ex_eng._run_init("2717add4-e6f6-397c-9019-74fa67be439f")
-        self.assertFalse(status)
+        self.assertEqual(status, "")
+        self.assertTrue(mock_envcmd.called)
+        self.assertTrue(self.local.get_container_name.called)
+        self.assertTrue(mock_chkports.called)
 
+        Config.conf['location'] = "/container_dir"
+        mock_loadmeta.return_value = ("/container_dir", "dummy",)
+        mock_envcmd.return_value = None
+        mock_chkports.return_value = None
         mock_setupuser.return_value = True
+        mock_mpoint.return_value = None
+        mock_setvol.return_value = False
+        self.local.get_container_name.return_value = "cont_name"
+        ex_eng = ExecutionEngineCommon(self.local, self.xmode)
+        status = ex_eng._run_init("2717add4-e6f6-397c-9019-74fa67be439f")
+        self.assertEqual(status, "")
+        self.assertTrue(mock_chkports.called)
+        self.assertTrue(mock_mpoint.called)
+        self.assertTrue(mock_setvol.called)
+
+        Config.conf['location'] = "/container_dir"
+        mock_loadmeta.return_value = ("/container_dir", "dummy",)
+        mock_envcmd.return_value = None
+        mock_chkports.return_value = None
+        mock_setupuser.return_value = True
+        mock_mpoint.return_value = None
+        mock_setvol.return_value = True
         mock_chkpaths.return_value = False
-        mock_chkexec.return_value = True
+        self.local.get_container_name.return_value = "cont_name"
         ex_eng = ExecutionEngineCommon(self.local, self.xmode)
         status = ex_eng._run_init("2717add4-e6f6-397c-9019-74fa67be439f")
-        self.assertFalse(status)
+        self.assertEqual(status, "")
+        self.assertTrue(mock_chkpaths.called)
 
+        Config.conf['location'] = "/container_dir"
+        mock_loadmeta.return_value = ("/container_dir", "dummy",)
+        mock_envcmd.return_value = None
+        mock_chkports.return_value = None
         mock_setupuser.return_value = True
+        mock_mpoint.return_value = None
+        mock_setvol.return_value = True
         mock_chkpaths.return_value = True
-        mock_chkexec.return_value = False
+        mock_chkexec.return_value = "/bin/ls"
+        self.local.get_container_name.return_value = "cont_name"
         ex_eng = ExecutionEngineCommon(self.local, self.xmode)
         status = ex_eng._run_init("2717add4-e6f6-397c-9019-74fa67be439f")
-        self.assertFalse(status)
-
-
-    #### Removed or moved to another class
-    # @patch('udocker.engine.base.os.path.isdir')
-    # def test_08__cont2host(self, mock_isdir):
-    #     """Test ExecutionEngine()._cont2host()."""
-    #     mock_isdir.return_value = True
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["vol"] = ("/opt/xxx:/mnt",)
-    #     status = ex_eng._cont2host("/mnt")
-    #     self.assertEqual(status, "/opt/xxx")
-
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["vol"] = ("/var/xxx:/mnt",)
-    #     status = ex_eng._cont2host("/opt")
-    #     self.assertTrue(status.endswith("/opt"))
-
-    #     # change dir to volume (regression of #51)
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["vol"] = ("/var/xxx",)
-    #     status = ex_eng._cont2host("/var/xxx/tt")
-    #     self.assertEqual(status, "/var/xxx/tt")
-
-    #     # change dir to volume (regression of #51)
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["vol"] = ("/var/xxx:/mnt",)
-    #     status = ex_eng._cont2host("/mnt/tt")
-    #     self.assertEqual(status, "/var/xxx/tt")
-
-    # def test_02_oskernel_isgreater(self):
-    #     """Test Config.oskernel_isgreater()."""
-    #     Config().conf['oskernel'] = "1.1.2-"
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     status = ex_eng._oskernel_isgreater([1, 1, 1])
-    #     self.assertTrue(status)
-
-    #     Config().conf['oskernel'] = "1.2.1-"
-    #     status = ex_eng._oskernel_isgreater([1, 1, 1])
-    #     self.assertTrue(status)
-
-    #     Config().conf['oskernel'] = "1.0.0-"
-    #     status = ex_eng._oskernel_isgreater([1, 1, 1])
-    #     self.assertFalse(status)
-
-    # def test_18__getenv(self):
-    #     """Test ExecutionEngineCommon()._getenv()."""
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["env"] = ["HOME=/home/user", "PATH=/bin:/usr/bin"]
-    #     status = ex_eng._getenv("")
-    #     self.assertEqual(status, None)
-
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["env"] = ["HOME=/home/user", "PATH=/bin:/usr/bin"]
-    #     status = ex_eng._getenv("XXX")
-    #     self.assertEqual(status, None)
-
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["env"] = ["HOME=/home/user", "PATH=/bin:/usr/bin"]
-    #     status = ex_eng._getenv("HOME")
-    #     self.assertEqual(status, "/home/user")
-
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     ex_eng.opt["env"] = ["HOME=/home/user", "PATH=/bin:/usr/bin"]
-    #     status = ex_eng._getenv("PATH")
-    #     self.assertEqual(status, "/bin:/usr/bin")
-
-    # @patch('udocker.engine.base.Msg')
-    # def test_19__uid_gid_from_str(self, mock_msg):
-    #     """Test ExecutionEngineCommon()._uid_gid_from_str()."""
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     status = ex_eng._uid_gid_from_str("")
-    #     self.assertEqual(status, (None, None))
-
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     status = ex_eng._uid_gid_from_str("0:0")
-    #     self.assertEqual(status, ('0', '0'))
-
-    #     ex_eng = ExecutionEngineCommon(self.local, self.xmode)
-    #     status = ex_eng._uid_gid_from_str("100:100")
-    #     self.assertEqual(status, ('100', '100'))
+        self.assertEqual(status, "/bin/ls")
+        self.assertTrue(mock_chkexec.called)
 
 
 if __name__ == '__main__':
