@@ -126,13 +126,16 @@ class GetURLTestCase(TestCase):
     @patch('udocker.utils.curl.Msg')
     @patch.object(GetURLexeCurl, 'is_available')
     @patch.object(GetURLpyCurl, 'is_available')
-    def test_02__select_implementation(self, mock_gupycurl, mock_guexecurl, mock_msg):
+    def test_02__select_implementation(self, mock_gupycurl,
+                                       mock_guexecurl, mock_msg):
         """Test02 GetURL()._select_implementation()."""
+        Config.conf['use_curl_executable'] = ""
         mock_msg.level = 0
         mock_gupycurl.return_value = True
         geturl = GetURL()
         geturl._select_implementation()
-        # self.assertTrue(geturl.cache_support)
+        self.assertTrue(geturl.cache_support)
+        self.assertTrue(mock_gupycurl.called)
 
         mock_gupycurl.return_value = False
         geturl = GetURL()
@@ -197,8 +200,12 @@ class GetURLTestCase(TestCase):
         status = geturl.post("http://host", {"DATA": 1, })
         self.assertEqual(status, "http://host")
 
-    # def test_08_get_status_code(self):
-    #     """Test08 GetURL().get_status_code()."""
+    def test_08_get_status_code(self):
+        """Test08 GetURL().get_status_code()."""
+        sline = "HTTP-Version 400 Reason-Phrase"
+        geturl = GetURL()
+        status = geturl.get_status_code(sline)
+        self.assertEqual(status, 400)
 
 
 class GetURLpyCurlTestCase(TestCase):
