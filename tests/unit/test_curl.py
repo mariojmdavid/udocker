@@ -245,17 +245,20 @@ class GetURLpyCurlTestCase(TestCase):
         geturl = GetURLpyCurl()
         self.assertEqual(geturl._url, None)
 
-    @patch('udocker.utils.curl.pycurl')
+    @patch('udocker.utils.curl.pycurl.Curl')
     def test_02_is_available(self, mock_pycurl):
         """Test02 GetURLpyCurl().is_available()."""
         mock_pycurl.return_value = True
         geturl = GetURLpyCurl()
         geturl.is_available()
         self.assertTrue(geturl.is_available())
+        self.assertTrue(mock_pycurl.called)
 
+        # mock_pycurl.side_effect = (NameError, AttributeError)
+        # geturl = GetURLpyCurl()
         # with self.assertRaises(NameError, AttributeError):
-        #     geturl = GetURLpyCurl()
         #     status = geturl.is_available()
+        #     self.assertTrue(mock_pycurl.called)
         #     self.assertFalse(geturl.is_available())
 
         # mock_pycurl.return_value = None
@@ -335,21 +338,15 @@ class GetURLexeCurlTestCase(TestCase):
         """Mock for pycurl.get."""
         return args[0]
 
-    @patch('udocker.utils.curl.Msg')
-    @patch('udocker.utils.curl.GetURL')
-    def test_01_init(self, mock_gcurl, mock_msg):
+    def test_01_init(self):
         """Test01 GetURLexeCurl() constructor."""
         geturl = GetURLexeCurl()
         self.assertIsNone(geturl._opts)
-
-        geturl = GetURLexeCurl()
         self.assertIsNone(geturl._files)
 
-    @patch('udocker.utils.curl.Msg')
     @patch('udocker.utils.curl.FileUtil.find_exec')
-    def test_02_is_available(self, mock_findexec, mock_msg):
+    def test_02_is_available(self, mock_findexec):
         """Test02 GetURLexeCurl()._is_available()."""
-        mock_msg.level = 0
         mock_findexec.return_value = "/tmp"
         geturl = GetURLexeCurl()
         self.assertTrue(geturl.is_available())
