@@ -142,9 +142,12 @@ class GetURLTestCase(TestCase):
         geturl._select_implementation()
         self.assertFalse(geturl.cache_support)
 
+        mock_gupycurl.return_value = False
         mock_guexecurl.return_value = False
-        with self.assertRaises(NameError):
-            GetURL()
+        with self.assertRaises(NameError) as nameerr:
+            geturl = GetURL()
+            geturl._select_implementation()
+            self.assertEqual(nameerr.exception.code, 1)
 
     def test_03_get_content_length(self):
         """Test03 GetURL().get_content_length()."""
@@ -207,6 +210,16 @@ class GetURLTestCase(TestCase):
         status = geturl.get_status_code(sline)
         self.assertEqual(status, 400)
 
+        sline = "HTTP-Version Reason-Phrase"
+        geturl = GetURL()
+        status = geturl.get_status_code(sline)
+        self.assertEqual(status, 400)
+
+        sline = ""
+        geturl = GetURL()
+        status = geturl.get_status_code(sline)
+        self.assertEqual(status, 404)
+
 
 class GetURLpyCurlTestCase(TestCase):
     """GetURLpyCurl TestCase."""
@@ -227,22 +240,27 @@ class GetURLpyCurlTestCase(TestCase):
         """Mock for pycurl.get."""
         return args[0]
 
-    # def test_01_init(self):
-    #     """Test01 GetURLpyCurl() constructor."""
+    def test_01_init(self):
+        """Test01 GetURLpyCurl() constructor."""
+        geturl = GetURLpyCurl()
+        self.assertEqual(geturl._url, None)
 
-    @patch('udocker.utils.curl.Msg')
-    @patch.object(GetURLpyCurl, 'is_available')
-    def test_02_is_available(self, mock_gupycurl, mock_msg):
-        """Test02 GetURLpyCurl()._is_available()."""
-        mock_msg.level = 0
-        mock_gupycurl.return_value = True
+    @patch('udocker.utils.curl.pycurl')
+    def test_02_is_available(self, mock_pycurl):
+        """Test02 GetURLpyCurl().is_available()."""
+        mock_pycurl.return_value = True
         geturl = GetURLpyCurl()
         geturl.is_available()
         self.assertTrue(geturl.is_available())
 
-        mock_gupycurl.return_value = False
-        geturl = GetURLpyCurl()
-        self.assertFalse(geturl.is_available())
+        # with self.assertRaises(NameError, AttributeError):
+        #     geturl = GetURLpyCurl()
+        #     status = geturl.is_available()
+        #     self.assertFalse(geturl.is_available())
+
+        # mock_pycurl.return_value = None
+        # geturl = GetURLpyCurl()
+        # self.assertFalse(geturl.is_available())
 
     # def test_03__select_implementation(self):
     #     """Test03 GetURLpyCurl()._select_implementation()."""
