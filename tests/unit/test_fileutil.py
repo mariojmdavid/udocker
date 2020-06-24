@@ -48,6 +48,7 @@ class FileUtilTestCase(TestCase):
 
     def setUp(self):
         Config().getconf()
+        Config().conf["tmpdir"] = "/tmp"
 
     def tearDown(self):
         pass
@@ -57,7 +58,6 @@ class FileUtilTestCase(TestCase):
     @patch.object(FileUtil, '_register_prefix')
     def test_01_init(self, mock_regpre, mock_base, mock_absp):
         """Test01 FileUtil() constructor."""
-        Config().conf['tmpdir'] = '/tmp'
         mock_regpre.return_value = None
         mock_base.return_value = 'filename.txt'
         mock_absp.return_value = '/tmp/filename.txt'
@@ -69,8 +69,28 @@ class FileUtilTestCase(TestCase):
         self.assertEqual(futil.filename, '-')
         self.assertEqual(futil.basename, '-')
 
-    # def test_02_register_prefix(self):
-    #     """Test02 FileUtil.register_prefix()."""
+    @patch('udocker.utils.fileutil.os.path.isdir')
+    @patch('udocker.utils.fileutil.os.path.realpath')
+    def test_02__register_prefix(self, mock_rpath,
+                                 mock_isdir):
+        """Test02 FileUtil._register_prefix()."""
+        prefix = "/dir"
+        res = ["/dir/", "/dir/", "/dir/", "/dir/"]
+        mock_rpath.return_value = "/dir"
+        mock_isdir.return_value = True
+        futil = FileUtil('filename.txt')
+        futil._register_prefix(prefix)
+        self.assertEqual(futil.safe_prefixes, res)
+
+        prefix = "/dir/"
+        res = ["/dir/", "/dir/", "/dir/", "/dir/"]
+        mock_rpath.return_value = "/dir/"
+        mock_isdir.return_value = False
+        futil = FileUtil('filename.txt')
+        futil._register_prefix(prefix)
+        self.assertEqual(futil.safe_prefixes, res)
+
+
 
     @patch('udocker.utils.fileutil.os.umask')
     @patch('udocker.utils.fileutil.os.path.abspath')
