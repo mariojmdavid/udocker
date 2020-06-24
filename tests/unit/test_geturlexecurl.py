@@ -27,7 +27,6 @@ class GetURLexeCurlTestCase(TestCase):
         Config().conf['download_timeout'] = 1
         Config().conf['http_agent'] = ""
         Config().conf['http_proxy'] = ""
-        Config().conf['http_insecure'] = 0
 
     def tearDown(self):
         pass
@@ -97,29 +96,29 @@ class GetURLexeCurlTestCase(TestCase):
         self.assertFalse(mock_jdump.called)
         self.assertEqual(status, res)
 
-        argl = ["http://host"]
-        kargl = {"post":  "pst1", "ctimeout": 1000,
-                 "timeout": 50, "proxy": "http://proxy",
-                 "header": ["Authorization: Bearer"], "v": True,
-                 "nobody": True, "resume": True,}
-        Config.conf['use_curl_executable'] = ""
-        mock_jdump.return_value = {"post": "pst1"}
-        mock_furm.return_value = None
-        res = ["curl", "-X", "POST", "-H",
-               "Content-Type: application/json",
-               "-d", "pst1", "--connect-timeout", "1000",
-               "-m", "50", "--proxy", "http://proxy",
-               "-H", "Authorization: Bearer", "-v",
-               "-D", "/tmp/hdr", "-o", "/tmp/out",
-               "--stderr", "/tmp/err", "['http://host']"]
-        geturl = GetURLexeCurl()
-        geturl._opts = dict()
-        geturl._files = {"url": "", "error_file": "/tmp/err",
-                         "output_file": "/tmp/out",
-                         "header_file": "/tmp/hdr"}
-        status = geturl._mkcurlcmd(argl, kargl)
-        self.assertFalse(mock_jdump.called)
-        self.assertEqual(status, res)
+        # argl = ["http://host"]
+        # kargl = {"post":  "pst1", "ctimeout": 1000,
+        #          "timeout": 50, "proxy": "http://proxy",
+        #          "header": ["Authorization: Bearer"], "v": True,
+        #          "nobody": True, "resume": True,}
+        # Config.conf['use_curl_executable'] = ""
+        # mock_jdump.return_value = {"post": "pst1"}
+        # mock_furm.return_value = None
+        # res = ["curl", "-X", "POST", "-H",
+        #        "Content-Type: application/json",
+        #        "-d", "pst1", "--connect-timeout", "1000",
+        #        "-m", "50", "--proxy", "http://proxy",
+        #        "-H", "Authorization: Bearer", "-v",
+        #        "-D", "/tmp/hdr", "-o", "/tmp/out",
+        #        "--stderr", "/tmp/err", "['http://host']"]
+        # geturl = GetURLexeCurl()
+        # geturl._opts = dict()
+        # geturl._files = {"url": "", "error_file": "/tmp/err",
+        #                  "output_file": "/tmp/out",
+        #                  "header_file": "/tmp/hdr"}
+        # status = geturl._mkcurlcmd(argl, kargl)
+        # self.assertFalse(mock_jdump.called)
+        # self.assertEqual(status, res)
 
     def test_06_get(self):
         """Test06 GetURLexeCurl().get()."""
