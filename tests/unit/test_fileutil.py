@@ -282,8 +282,21 @@ class FileUtilTestCase(TestCase):
         status = futil.chown(0, 0, False)
         self.assertFalse(status)
 
-    # def test_11_rchown(self):
-    #     """Test11 FileUtil.rchown()."""
+    @patch.object(FileUtil, 'chown')
+    @patch('udocker.utils.fileutil.os.path.abspath')
+    @patch('udocker.utils.fileutil.os.path.basename')
+    @patch.object(FileUtil, '_register_prefix')
+    def test_12_rchown(self, mock_regpre, mock_base,
+                       mock_absp, mock_fuchown):
+        """Test12 FileUtil.rchown()."""
+        mock_regpre.return_value = None
+        mock_base.return_value = 'filename.txt'
+        mock_absp.return_value = '/tmp/filename.txt'
+        mock_fuchown.return_value = True
+        futil = FileUtil("somedir")
+        FileUtil.safe_prefixes = ["/tmp"]
+        status = futil.rchown()
+        self.assertTrue(status)
 
     # def test_12__chmod(self):
     #     """Test12 FileUtil._chmod()."""
