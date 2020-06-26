@@ -324,50 +324,55 @@ class LocalRepositoryTestCase(TestCase):
             self.assertTrue(mock_listdir.called)
             self.assertTrue(mock_isdir.call_count, 2)
 
+    @patch.object(LocalRepository, 'del_container_name')
     @patch.object(LocalRepository, 'cd_container')
-    @patch.object(LocalRepository, '_name_is_valid')
+    @patch.object(LocalRepository, 'get_container_name')
+    @patch.object(LocalRepository, 'get_containers_list')
+    @patch('udocker.container.localrepo.FileUtil.rchmod')
     @patch('udocker.container.localrepo.FileUtil.remove')
-    @patch('udocker.container.localrepo.os.path.exists')
     @patch('udocker.container.localrepo.FileUtil.register_prefix')
-    def test_15_del_container_name(self, mock_furegp, mock_exists,
-                                   mock_remove,
-                                   mock_namevalid, mock_cdcont):
-        """Test15 LocalRepository().del_container_name()."""
+    def test_15_del_container(self, mock_furegp,
+                              mock_furm, mock_furchmod,
+                              mock_getlist, mock_getname,
+                              mock_cdcont, mock_delname):
+        """Test15 LocalRepository().del_container()."""
         mock_furegp.side_effect = [None, None, None]
         cont_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
         mock_cdcont.return_value = ""
         lrepo = LocalRepository(UDOCKER_TOPDIR)
-        status = lrepo.del_container_name(cont_id)
+        status = lrepo.del_container(cont_id)
         self.assertFalse(status)
 
-    #     # mock_cdcont.return_value = "/home/u1/.udocker/containerid"
-    #     # mock_namevalid.return_value = False
-    #     # mock_exists.return_value = True
-    #     # mock_remove.return_value = True
-    #     # lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     # status = lrepo.del_container_name("NAMEALIAS")
-    #     # self.assertFalse(status)
+        mock_furegp.side_effect = [None, None, None]
+        cont_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
+        cdirs = "/home/u1/.udocker/containers"
+        contdir = cdirs + "/" + cont_id
+        mock_cdcont.return_value = contdir
+        mock_getlist.return_value = [contdir]
+        mock_delname.return_value = None
+        mock_getname.return_value = ["mycont"]
+        mock_furm.return_value = False
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.del_container(cont_id)
+        self.assertFalse(status)
+        self.assertTrue(mock_getlist.called)
+        self.assertTrue(mock_delname.called)
 
-    # #     mock_namevalid.return_value = True
-    # #     mock_exists.return_value = False
-    # #     mock_remove.return_value = True
-    # #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    # #     status = lrepo.del_container_name("NAMEALIAS")
-    # #     self.assertFalse(status)
+        mock_furegp.side_effect = [None, None, None]
+        cont_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
+        cdirs = "/home/u1/.udocker/containers"
+        contdir = cdirs + "/" + cont_id
+        mock_cdcont.return_value = contdir
+        mock_getlist.return_value = [contdir]
+        mock_delname.return_value = None
+        mock_getname.return_value = ["mycont"]
+        mock_furm.return_value = True
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.del_container(cont_id)
+        self.assertTrue(status)
+        self.assertTrue(mock_furm.called)
 
-    # #     mock_namevalid.return_value = True
-    # #     mock_exists.return_value = True
-    # #     mock_remove.return_value = True
-    # #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    # #     status = lrepo.del_container_name("NAMEALIAS")
-    # #     self.assertTrue(status)
 
-    # #     mock_namevalid.return_value = True
-    # #     mock_exists.return_value = True
-    # #     mock_remove.return_value = False
-    # #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    # #     status = lrepo.del_container_name("NAMEALIAS")
-    # #     self.assertFalse(status)
 
 
 
