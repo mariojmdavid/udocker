@@ -4,14 +4,13 @@ udocker unit tests: LocalRepository
 """
 import sys
 import os
-import subprocess
 from unittest import TestCase, main
 from udocker.container.localrepo import LocalRepository
 from udocker.config import Config
 try:
-    from unittest.mock import patch, mock_open, call
+    from unittest.mock import patch, mock_open, call, Mock
 except ImportError:
-    from mock import patch, mock_open, call
+    from mock import patch, mock_open, call, Mock
 
 try:
     from io import BytesIO as bytestr
@@ -24,7 +23,7 @@ else:
     BUILTIN = "__builtin__"
 
 BOPEN = BUILTIN + '.open'
-UDOCKER_TOPDIR = "test_topdir"
+UDOCKER_TOPDIR = "/home/u1/.udocker"
 
 
 class LocalRepositoryTestCase(TestCase):
@@ -35,19 +34,25 @@ class LocalRepositoryTestCase(TestCase):
     def setUp(self):
         Config().getconf()
         Config().conf['topdir'] = UDOCKER_TOPDIR
-        Config().conf['tmpdir'] = "/tmp"
-        Config().conf['homedir'] = "/tmp"
         Config().conf['bindir'] = ""
         Config().conf['libdir'] = ""
         Config().conf['reposdir'] = ""
         Config().conf['layersdir'] = ""
         Config().conf['containersdir'] = ""
+        Config().conf['homedir'] = "/home/u1"
+
+        self.futilpatch = patch("udocker.utils.fileutil.FileUtil")
+        self.futil = self.futilpatch.start()
+        self.mock_futil = Mock()
+        self.futil.return_value = self.mock_futil
+        self.futil.return_value.register_prefix.side_effect = [None, None,
+                                                               None]
 
     def tearDown(self):
-        pass
+        self.futil.stop()
 
     def test_01_init(self):
-        """Test LocalRepository() constructor."""
+        """Test01 LocalRepository() constructor."""
         lrepo = LocalRepository(UDOCKER_TOPDIR)
         self.assertTrue(lrepo.topdir)
         self.assertTrue(lrepo.reposdir)
@@ -56,61 +61,273 @@ class LocalRepositoryTestCase(TestCase):
         self.assertTrue(lrepo.bindir)
         self.assertTrue(lrepo.libdir)
         self.assertTrue(lrepo.homedir)
+        self.assertEqual(lrepo.topdir, UDOCKER_TOPDIR)
         self.assertEqual(lrepo.cur_repodir, "")
         self.assertEqual(lrepo.cur_tagdir, "")
         self.assertEqual(lrepo.cur_containerdir, "")
+        self.assertTrue(self.futil.register_prefix.called_count, 3)
 
     def test_02_setup(self):
-        """Test LocalRepository().setup()."""
+        """Test02 LocalRepository().setup()."""
+        newdir = "/home/u2/.udocker"
         lrepo = LocalRepository(UDOCKER_TOPDIR)
-        self.assertEqual(os.path.basename(lrepo.topdir), UDOCKER_TOPDIR)
+        lrepo.setup(newdir)
+        self.assertEqual(lrepo.topdir, newdir)
 
+    @patch('udocker.container.localrepo.os.path.exists')
+    @patch('udocker.container.localrepo.os.makedirs')
+    def test_03_create_repo(self, mock_mkdir, mock_exists):
+        """Test03 LocalRepository().create_repo()."""
+        Config.conf['keystore'] = "tmp"
+        mock_exists.side_effect = [False, False, False, False,
+                                   False, False, False]
+        mock_mkdir.side_effect = [None, None, None, None,
+                                  None, None, None]
         lrepo = LocalRepository(UDOCKER_TOPDIR)
-        lrepo.setup("YYYY")
-        self.assertEqual(os.path.basename(lrepo.topdir), "YYYY")
+        status = lrepo.create_repo()
+        self.assertTrue(status)
+        self.assertTrue(mock_exists.call_count, 7)
+        self.assertTrue(mock_mkdir.call_count, 7)
 
-    # def test_03_sha256(self):
-    #     """Test LocalRepository().sha256()."""
-    #     sha256sum = (
-    #         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+        Config.conf['keystore'] = "tmp"
+        mock_exists.side_effect = OSError("fail")
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.create_repo()
+        self.assertFalse(status)
+
+    @patch('udocker.container.localrepo.os.path.exists')
+    def test_04_is_repo(self, mock_exists):
+        """Test04 LocalRepository().is_repo()."""
+        mock_exists.side_effect = [False, True, False, False,
+                                   True]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.is_repo()
+        self.assertTrue(mock_exists.call_count, 5)
+        self.assertFalse(status)
+
+        mock_exists.side_effect = [True, True, True, True,
+                                   True]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.is_repo()
+        self.assertTrue(mock_exists.call_count, 5)
+        self.assertTrue(status)
+
+    def test_05_is_container_id(self):
+        """Test05 LocalRepository().is_container_id()."""
+        contid = ""
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.is_container_id(contid)
+        self.assertFalse(status)
+
+        contid = "d2578feb-acfc-37e0-8561-47335f85e46a"
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.is_container_id(contid)
+        self.assertTrue(status)
+
+        contid = "d"
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.is_container_id(contid)
+        self.assertFalse(status)
+
+    @patch.object(LocalRepository, '_protect')
+    def test_06_protect_container(self, mock_prot):
+        """Test06 LocalRepository().protect_container()."""
+        contid = "d2578feb-acfc-37e0-8561-47335f85e46a"
+        mock_prot.return_value = True
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.protect_container(contid)
+        self.assertTrue(status)
+        self.assertTrue(mock_prot.called)
+
+    @patch.object(LocalRepository, '_unprotect')
+    def test_07_unprotect_container(self, mock_unprot):
+        """Test07 LocalRepository().unprotect_container()."""
+        contid = "d2578feb-acfc-37e0-8561-47335f85e46a"
+        mock_unprot.return_value = True
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.unprotect_container(contid)
+        self.assertTrue(status)
+        self.assertTrue(mock_unprot.called)
+
+    @patch.object(LocalRepository, '_isprotected')
+    def test_08_isprotected_container(self, mock_isprot):
+        """Test08 LocalRepository().isprotected_container()."""
+        contid = "d2578feb-acfc-37e0-8561-47335f85e46a"
+        mock_isprot.return_value = True
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.isprotected_container(contid)
+        self.assertTrue(status)
+        self.assertTrue(mock_isprot.called)
+
+    def test_09__protect(self):
+        """Test09 LocalRepository()._protect()."""
+        cdir = "/home/u1/.udocker/contid"
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        with patch(BOPEN, mock_open()):
+            status = lrepo._protect(cdir)
+            self.assertTrue(status)
+
+    @patch('udocker.container.localrepo.FileUtil.remove')
+    def test_10__unprotect(self, mock_furm):
+        """Test10 LocalRepository()._unprotect()."""
+        cdir = "/home/u1/.udocker/contid"
+        mock_furm.return_value = True
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._unprotect(cdir)
+        self.assertTrue(status)
+        self.assertTrue(mock_furm.called)
+
+    @patch('udocker.container.localrepo.os.path.exists')
+    def test_11__isprotected(self, mock_exists):
+        """Test11 LocalRepository()._isprotected()."""
+        cdir = "/home/u1/.udocker/contid"
+        mock_exists.return_value = True
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._isprotected(cdir)
+        self.assertTrue(status)
+        self.assertTrue(mock_exists.called)
+
+    @patch.object(LocalRepository, 'cd_container')
+    @patch('udocker.container.localrepo.os.access')
+    @patch('udocker.container.localrepo.os.path.isdir')
+    @patch('udocker.container.localrepo.os.path.exists')
+    def test_12_iswriteable_container(self, mock_exists,
+                                      mock_isdir, mock_access,
+                                      mock_cdcont):
+        """Test12 LocalRepository().iswriteable_container()."""
+        container_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
+        mock_exists.return_value = False
+        mock_cdcont.return_value = "/home/u1/.udocker/containerid"
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.iswriteable_container(container_id)
+        self.assertEqual(status, 2)
+        self.assertTrue(mock_exists.called)
+
+        mock_exists.return_value = True
+        mock_isdir.return_value = False
+        mock_cdcont.return_value = "/home/u1/.udocker/containerid"
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.iswriteable_container(container_id)
+        self.assertEqual(status, 3)
+        self.assertTrue(mock_isdir.called)
+
+        mock_exists.return_value = True
+        mock_isdir.return_value = True
+        mock_access.return_value = True
+        mock_cdcont.return_value = "/home/u1/.udocker/containerid"
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.iswriteable_container(container_id)
+        self.assertEqual(status, 1)
+        self.assertTrue(mock_access.called)
+
+        mock_exists.return_value = True
+        mock_isdir.return_value = True
+        mock_access.return_value = False
+        mock_cdcont.return_value = "/home/u1/.udocker/containerid"
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.iswriteable_container(container_id)
+        self.assertEqual(status, 0)
+
+    @patch.object(LocalRepository, 'cd_container')
+    @patch('udocker.container.localrepo.Uprocess.get_output')
+    def test_13_get_size(self, mock_getout, mock_cdcont):
+        """Test13 LocalRepository().get_size()."""
+        container_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
+        mock_getout.return_value = "1234 dd"
+        mock_cdcont.return_value = "/home/u1/.udocker/containerid"
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.get_size(container_id)
+        self.assertEqual(status, 1234)
+        self.assertTrue(mock_getout.called)
+
+        container_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
+        mock_getout.return_value = ""
+        mock_cdcont.return_value = "/home/u1/.udocker/containerid"
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.get_size(container_id)
+        self.assertEqual(status, -1)
+
+    @patch.object(LocalRepository, 'get_container_name')
+    @patch('udocker.container.localrepo.os.path.islink')
+    @patch('udocker.container.localrepo.os.path.isdir')
+    @patch('udocker.container.localrepo.os.listdir')
+    def test_14_get_containers_list(self, mock_listdir, mock_isdir,
+                                    mock_islink, mock_getname):
+        """Test14 LocalRepository().get_containers_list() - 01."""
+        mock_isdir.return_value = False
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.get_containers_list()
+        self.assertEqual(status, list())
+
+        mock_isdir.return_value = False
+        mock_listdir.return_value = ["LINK"]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.get_containers_list()
+        self.assertEqual(status, list())
+
+        # mock_isdir.return_value = True
+        # mock_listdir.return_value = ["LINK"]
+        # with patch(BOPEN, mock_open(read_data='REPONAME')):
+        #     lrepo = LocalRepository(UDOCKER_TOPDIR)
+        #     containers_list = lrepo.get_containers_list()
+        #     self.assertEqual(os.path.basename(containers_list[0]), "LINK")
+
+        # mock_isdir.return_value = True
+        # mock_listdir.return_value = ["LINK"]
+        # mock_islink.return_value = False
+        # mock_getname.return_value = ["NAME1", "NAME2"]
+        # with patch(BOPEN, mock_open(read_data='REPONAME')):
+        #     lrepo = LocalRepository(UDOCKER_TOPDIR)
+        #     containers_list = lrepo.get_containers_list(False)
+        #     self.assertEqual(os.path.basename(containers_list[0][1]),
+        #                      "REPONAME")
+
+    @patch.object(LocalRepository, 'cd_container')
+    @patch.object(LocalRepository, '_name_is_valid')
+    @patch('udocker.container.localrepo.FileUtil.remove')
+    @patch('udocker.container.localrepo.os.path.exists')
+    def test_15_del_container_name(self, mock_exists, mock_remove,
+                                   mock_namevalid, mock_cdcont):
+        """Test15 LocalRepository().del_container_name()."""
+        cont_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
+        mock_cdcont.return_value = ""
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.del_container_name(cont_id)
+        self.assertFalse(status)
+
+        # mock_cdcont.return_value = "/home/u1/.udocker/containerid"
+        # mock_namevalid.return_value = False
+        # mock_exists.return_value = True
+        # mock_remove.return_value = True
+        # lrepo = LocalRepository(UDOCKER_TOPDIR)
+        # status = lrepo.del_container_name("NAMEALIAS")
+        # self.assertFalse(status)
+
+    #     mock_namevalid.return_value = True
+    #     mock_exists.return_value = False
+    #     mock_remove.return_value = True
     #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     file_data = bytestr("qwerty".encode())
-    #     if sys.version_info[0] < 3:   # TODO: implement for python3
-    #         with patch(BOPEN, mock_open()) as mopen:
-    #             mopen.return_value.__iter__ = \
-    #                 (lambda self: iter(file_data.readline, ''))
-    #             status = lrepo.sha256("filename")
-    #             self.assertEqual(status, sha256sum)
+    #     status = lrepo.del_container_name("NAMEALIAS")
+    #     self.assertFalse(status)
 
-    #     with patch(BOPEN, mock_open()) as mopen:
-    #         mopen.side_effect = IOError
-    #         status = lrepo.sha256("filename")
-    #         self.assertRaises(IOError)
-    #         self.assertEqual(status, "")
+    #     mock_namevalid.return_value = True
+    #     mock_exists.return_value = True
+    #     mock_remove.return_value = True
+    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
+    #     status = lrepo.del_container_name("NAMEALIAS")
+    #     self.assertTrue(status)
 
-    def test_04_create_repo(self):
-        """Test LocalRepository().create_repo()."""
-        lrepo = LocalRepository(UDOCKER_TOPDIR)
-        subprocess.call(["/bin/rm", "-Rf", lrepo.topdir])
-        self.assertFalse(os.path.exists(lrepo.topdir))
+    #     mock_namevalid.return_value = True
+    #     mock_exists.return_value = True
+    #     mock_remove.return_value = False
+    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
+    #     status = lrepo.del_container_name("NAMEALIAS")
+    #     self.assertFalse(status)
 
-        lrepo = LocalRepository(UDOCKER_TOPDIR)
-        lrepo.create_repo()
-        self.assertTrue(os.path.exists(lrepo.topdir))
-        self.assertTrue(os.path.exists(lrepo.reposdir))
-        self.assertTrue(os.path.exists(lrepo.layersdir))
-        self.assertTrue(os.path.exists(lrepo.containersdir))
-        self.assertTrue(os.path.exists(lrepo.bindir))
-        self.assertTrue(os.path.exists(lrepo.libdir))
-        subprocess.call(["/bin/rm", "-Rf", lrepo.topdir])
 
-    def test_05_is_repo(self):
-        """Test LocalRepository().is_repo()."""
-        lrepo = LocalRepository(UDOCKER_TOPDIR)
-        subprocess.call(["/bin/rm", "-Rf", lrepo.topdir])
-        lrepo.create_repo()
-        self.assertTrue(lrepo.is_repo())
-        subprocess.call(["/bin/rm", "-Rf", lrepo.topdir])
+
+
+
 
     @patch('udocker.container.localrepo.os.readlink')
     @patch('udocker.container.localrepo.os.path.islink')
@@ -127,72 +344,7 @@ class LocalRepositoryTestCase(TestCase):
         name_list = lrepo.get_container_name("IMAGE:TAG")
         self.assertEqual(name_list, ["LINK"])
 
-    @patch('udocker.container.localrepo.os.path.isdir')
-    @patch('udocker.container.localrepo.os.listdir')
-    def test_07a_get_containers_list(self, mock_listdir, mock_isdir):
-        """Test LocalRepository().get_containers_list() - 01."""
-        mock_isdir.return_value = True
-        mock_listdir.return_value = ['LINK']
-        with patch(BOPEN, mock_open(read_data='REPONAME')):
-            lrepo = LocalRepository(UDOCKER_TOPDIR)
-            containers_list = lrepo.get_containers_list()
-            self.assertEqual(os.path.basename(containers_list[0]), "LINK")
 
-    @patch('udocker.container.localrepo.os.path.islink')
-    @patch('udocker.container.localrepo.os.listdir')
-    @patch('udocker.container.localrepo.os.path.isdir')
-    @patch('udocker.container.localrepo.LocalRepository.get_container_name')
-    def test_07b_get_containers_list(self, mock_getname, mock_isdir,
-                                     mock_listdir, mock_islink):
-        """Test LocalRepository().get_containers_list() - 02."""
-        mock_isdir.return_value = True
-        mock_listdir.return_value = ['LINK']
-        mock_islink.return_value = False
-        mock_getname.return_value = ["NAME1", "NAME2"]
-        with patch(BOPEN, mock_open(read_data='REPONAME')):
-            lrepo = LocalRepository(UDOCKER_TOPDIR)
-            containers_list = lrepo.get_containers_list(False)
-            self.assertEqual(os.path.basename(containers_list[0][1]),
-                             "REPONAME")
-
-    @patch('udocker.container.localrepo.os.path.exists')
-    @patch.object(LocalRepository, 'get_containers_list')
-    def test_08_cd_container(self, mock_getlist, mock_exists):
-        """Test LocalRepository().cd_container()."""
-        mock_exists.return_value = True
-        lrepo = LocalRepository(UDOCKER_TOPDIR)
-        mock_getlist.return_value = [lrepo.containersdir +
-                                     "/CONTAINERNAME"]
-        container_path = lrepo.cd_container("CONTAINERNAME")
-        self.assertEqual(container_path, mock_getlist.return_value[0])
-
-    def test_09_protect_container(self):
-        """Test LocalRepository().protect_container()."""
-        with patch(BOPEN, mock_open()) as mopen:
-            container_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
-            lrepo = LocalRepository(UDOCKER_TOPDIR)
-            lrepo.protect_container(container_id)
-            self.assertTrue(mopen.called)
-            self.assertEqual(mopen.call_args, call('/PROTECT', 'w'))
-
-    @patch('udocker.container.localrepo.os.path.exists')
-    def test_10_isprotected_container(self, mock_exists):
-        """Test LocalRepository().isprotected_container() - Protected."""
-        container_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
-        lrepo = LocalRepository(UDOCKER_TOPDIR)
-        lrepo.isprotected_container(container_id)
-        self.assertTrue(mock_exists.called)
-        self.assertEqual(mock_exists.call_args, call('/PROTECT'))
-
-    @patch.object(LocalRepository, 'cd_container')
-    @patch.object(LocalRepository, '_unprotect')
-    def test_11_unprotect_container(self, mock_unprotect, mock_cdcont):
-        """Test LocalRepository().isprotected_container() - Unprotected."""
-        mock_cdcont.return_value = "/tmp"
-        container_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
-        lrepo = LocalRepository(UDOCKER_TOPDIR)
-        lrepo.unprotect_container(container_id)
-        self.assertTrue(mock_unprotect.called)
 
     def test_12_protect_imagerepo(self):
         """Test LocalRepository().protect_imagerepo()."""
@@ -221,72 +373,7 @@ class LocalRepositoryTestCase(TestCase):
         lrepo.unprotect_imagerepo("IMAGE", "TAG")
         self.assertTrue(mock_unprotect.called)
 
-    @patch('udocker.container.localrepo.os.access')
-    @patch('udocker.container.localrepo.os.path.isdir')
-    @patch('udocker.container.localrepo.os.path.exists')
-    @patch.object(LocalRepository, 'cd_container')
-    def test_15_iswriteable_container(self, mock_cd, mock_exists,
-                                      mock_isdir, mock_access):
-        """Test LocalRepository().iswriteable_container()."""
-        container_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
-        mock_exists.return_value = False
-        lrepo = LocalRepository(UDOCKER_TOPDIR)
-        status = lrepo.iswriteable_container(container_id)
-        self.assertEqual(status, 2)
 
-        mock_exists.return_value = True
-        mock_isdir.return_value = False
-        lrepo = LocalRepository(UDOCKER_TOPDIR)
-        status = lrepo.iswriteable_container(container_id)
-        self.assertEqual(status, 3)
-
-        mock_exists.return_value = True
-        mock_isdir.return_value = True
-        mock_access.return_value = True
-        lrepo = LocalRepository(UDOCKER_TOPDIR)
-        status = lrepo.iswriteable_container(container_id)
-        self.assertEqual(status, 1)
-
-        mock_exists.return_value = True
-        mock_isdir.return_value = True
-        mock_access.return_value = False
-        lrepo = LocalRepository(UDOCKER_TOPDIR)
-        status = lrepo.iswriteable_container(container_id)
-        self.assertEqual(status, 0)
-
-    # @patch.object(LocalRepository, '_name_is_valid')
-    # @patch('udocker.container.localrepo.FileUtil.remove')
-    # @patch('udocker.container.localrepo.os.path.exists')
-    # def test_16_del_container_name(self, mock_exists, mock_remove,
-    #                                mock_namevalid):
-    #     """Test LocalRepository().del_container_name()."""
-    #     mock_namevalid.return_value = False
-    #     mock_exists.return_value = True
-    #     mock_remove.return_value = True
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.del_container_name("NAMEALIAS")
-    #     self.assertFalse(status)
-
-    #     mock_namevalid.return_value = True
-    #     mock_exists.return_value = False
-    #     mock_remove.return_value = True
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.del_container_name("NAMEALIAS")
-    #     self.assertFalse(status)
-
-    #     mock_namevalid.return_value = True
-    #     mock_exists.return_value = True
-    #     mock_remove.return_value = True
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.del_container_name("NAMEALIAS")
-    #     self.assertTrue(status)
-
-    #     mock_namevalid.return_value = True
-    #     mock_exists.return_value = True
-    #     mock_remove.return_value = False
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.del_container_name("NAMEALIAS")
-    #     self.assertFalse(status)
 
     @patch('udocker.container.localrepo.os.symlink')
     @patch('udocker.container.localrepo.os.path.exists')
