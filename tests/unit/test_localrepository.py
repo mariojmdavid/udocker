@@ -372,8 +372,52 @@ class LocalRepositoryTestCase(TestCase):
         self.assertTrue(status)
         self.assertTrue(mock_furm.called)
 
+    @patch('udocker.container.localrepo.os.path.exists')
+    @patch.object(LocalRepository, 'get_containers_list')
+    @patch('udocker.container.localrepo.FileUtil.register_prefix')
+    def test_16_cd_container(self, mock_furegp, mock_getlist,
+                             mock_exists):
+        """Test16 LocalRepository().cd_container()."""
+        mock_furegp.side_effect = [None, None, None]
+        cont_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
+        cdirs = "/home/u1/.udocker/containers"
+        contdir = cdirs + "/" + cont_id
+        mock_getlist.return_value = [contdir]
+        mock_exists.return_value = False
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.cd_container(cont_id)
+        self.assertEqual(status, "")
 
+        mock_furegp.side_effect = [None, None, None]
+        cont_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
+        cdirs = "/home/u1/.udocker/containers"
+        contdir = cdirs + "/" + cont_id
+        mock_getlist.return_value = [contdir]
+        mock_exists.return_value = True
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.cd_container(cont_id)
+        self.assertEqual(status, contdir)
 
+    @patch('udocker.container.localrepo.os.path.relpath')
+    @patch('udocker.container.localrepo.os.symlink')
+    @patch('udocker.container.localrepo.os.path.exists')
+    @patch('udocker.container.localrepo.FileUtil.register_prefix')
+    def test_17__symlink(self, mock_furegp, mock_exists,
+                         mock_symlink, mock_relpath):
+        """Test17 LocalRepository()._symlink()."""
+        mock_furegp.side_effect = [None, None, None]
+        mock_exists.return_value = True
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._symlink("EXISTINGFILE", "LINKFILE")
+        self.assertFalse(status)
+
+        mock_furegp.side_effect = [None, None, None]
+        mock_exists.return_value = False
+        mock_symlink.return_value = None
+        mock_relpath.return_value = "cont/ROOT"
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._symlink("EXISTINGFILE", "LINKFILE")
+        self.assertTrue(status)
 
 
 
@@ -425,19 +469,6 @@ class LocalRepositoryTestCase(TestCase):
 
 
 
-    # @patch('udocker.container.localrepo.os.symlink')
-    # @patch('udocker.container.localrepo.os.path.exists')
-    # def test_17__symlink(self, mock_exists, mock_symlink):
-    #     """Test LocalRepository()._symlink()."""
-    #     mock_exists.return_value = True
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo._symlink("EXISTINGFILE", "LINKFILE")
-    #     self.assertFalse(status)
-
-    #     mock_exists.return_value = False
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo._symlink("EXISTINGFILE", "LINKFILE")
-    #     self.assertTrue(status)
 
     # @patch('udocker.container.localrepo.os.path.exists')
     # @patch.object(LocalRepository, '_symlink')
