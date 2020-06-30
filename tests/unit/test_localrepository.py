@@ -1271,11 +1271,9 @@ class LocalRepositoryTestCase(TestCase):
         self.assertTrue(mock_exists.call_count, 1)
         self.assertTrue(mock_attrv1s2.call_count, 1)
 
-
-    @patch('udocker.container.localrepo.json.dump')
     @patch('udocker.container.localrepo.os.path.exists')
     @patch('udocker.container.localrepo.FileUtil')
-    def test_43_save_json(self, mock_fu, mock_exists, mock_jsondump):
+    def test_43_save_json(self, mock_fu, mock_exists):
         """Test43 LocalRepository().save_json()."""
         mock_fu.return_value.register_prefix.side_effect = \
             [None, None, None]
@@ -1329,71 +1327,62 @@ class LocalRepositoryTestCase(TestCase):
             self.assertTrue(mopen.called)
             self.assertFalse(status)
 
-    # @patch('udocker.container.localrepo.json.load')
-    # @patch('udocker.container.localrepo.os.path.exists')
-    # def test_30_load_json(self, mock_exists, mock_jsonload):
-    #     """Test LocalRepository().load_json()."""
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.load_json("filename")
-    #     self.assertFalse(mock_exists.called)
-    #     self.assertFalse(status)
+    @patch('udocker.container.localrepo.os.path.exists')
+    @patch('udocker.container.localrepo.FileUtil')
+    def test_44_load_json(self, mock_fu, mock_exists):
+        """Test44 LocalRepository().load_json()."""
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, True]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        lrepo.cur_repodir = ""
+        lrepo.cur_tagdir = ""
+        status = lrepo.load_json("filename")
+        self.assertFalse(mock_exists.called)
+        self.assertFalse(status)
 
-    #     mock_exists.return_value = False
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     lrepo.cur_repodir = lrepo.reposdir + "/IMAGE"
-    #     lrepo.cur_tagdir = lrepo.cur_repodir + "/TAG"
-    #     status = lrepo.load_json("filename")
-    #     self.assertTrue(mock_exists.called)
-    #     self.assertFalse(status)
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [False, False]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        lrepo.cur_repodir = lrepo.reposdir + "/IMAGE"
+        lrepo.cur_tagdir = lrepo.cur_repodir + "/TAG"
+        status = lrepo.load_json("filename")
+        self.assertTrue(mock_exists.call_count, 1)
+        self.assertFalse(status)
 
-    #     mock_exists.reset_mock()
-    #     with patch(BOPEN, mock_open()) as mopen:
-    #         lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #         status = lrepo.load_json("/filename")
-    #         self.assertTrue(mopen.called)
-    #         self.assertTrue(status)
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, False]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        lrepo.cur_repodir = lrepo.reposdir + "/IMAGE"
+        lrepo.cur_tagdir = lrepo.cur_repodir + "/TAG"
+        status = lrepo.load_json("filename")
+        self.assertTrue(mock_exists.call_count, 2)
+        self.assertFalse(status)
 
-    #     mock_exists.reset_mock()
-    #     with patch(BOPEN, mock_open()) as mopen:
-    #         mopen.side_effect = IOError('foo')
-    #         lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #         status = lrepo.load_json("/filename")
-    #         self.assertTrue(mopen.called)
-    #         self.assertFalse(status)
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, True]
+        with patch(BOPEN, mock_open()) as mopen:
+            lrepo = LocalRepository(UDOCKER_TOPDIR)
+            lrepo.cur_repodir = lrepo.reposdir + "/IMAGE"
+            lrepo.cur_tagdir = lrepo.cur_repodir + "/TAG"
+            status = lrepo.load_json("filename")
+            self.assertTrue(mock_exists.call_count, 2)
+            self.assertTrue(mopen.called)
+            self.assertTrue(status)
 
-    # @patch('udocker.container.localrepo.FileUtil')
-    # def test_31__protect(self, mock_futil):
-    #     """Test LocalRepository()._protect().
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, True]
+        with patch(BOPEN, mock_open()) as mopen:
+            mopen.side_effect = IOError('foo')
+            lrepo = LocalRepository(UDOCKER_TOPDIR)
+            status = lrepo.load_json("/filename")
+            self.assertTrue(mopen.called)
+            self.assertFalse(status)
 
-    #     Set the protection mark in a container or image tag
-    #     """
-    #     mock_futil.return_value.isdir.return_value = True
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo._protect
-    #     self.assertTrue(status)
-
-    # @patch('udocker.container.localrepo.FileUtil.remove')
-    # def test_32__unprotect(self, mock_rm):
-    #     """Test LocalRepository()._unprotect().
-    #     Remove protection mark from container or image tag.
-    #     """
-    #     mock_rm.return_value = True
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo._unprotect("dir")
-    #     self.assertTrue(mock_rm.called)
-    #     self.assertTrue(status)
-
-    # @patch('udocker.container.localrepo.FileUtil')
-    # @patch('udocker.container.localrepo.os.path.exists')
-    # def test_33__isprotected(self, mock_exists, mock_futil):
-    #     """Test LocalRepository()._isprotected().
-    #     See if container or image tag are protected.
-    #     """
-    #     mock_futil.return_value.isdir.return_value = True
-    #     mock_exists.return_value = True
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo._isprotected("dir")
-    #     self.assertTrue(status)
 
     # @patch.object(LocalRepository, 'cd_container')
     # @patch.object(LocalRepository, 'get_containers_list')
