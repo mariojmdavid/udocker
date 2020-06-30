@@ -958,197 +958,376 @@ class LocalRepositoryTestCase(TestCase):
         self.assertTrue(mock_islink.called)
         self.assertEqual(status, [("IMAGE/TAG/f1", 123)])
 
+    @patch.object(LocalRepository, '_symlink')
+    @patch('udocker.container.localrepo.os.path.basename')
+    @patch('udocker.container.localrepo.os.path.islink')
+    @patch('udocker.container.localrepo.os.path.exists')
+    @patch('udocker.container.localrepo.FileUtil')
+    def test_35_add_image_layer(self, mock_fu, mock_exists,
+                                mock_islink, mock_base, mock_symln):
+        """Test35 LocalRepository().add_image_layer()."""
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        lrepo.cur_repodir = ""
+        lrepo.cur_tagdir = ""
+        status = lrepo.add_image_layer("FILE")
+        self.assertFalse(status)
+        self.assertFalse(mock_exists.called)
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [False, False]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        lrepo.cur_repodir = "IMAGE"
+        lrepo.cur_tagdir = "TAG"
+        status = lrepo.add_image_layer("FILE")
+        self.assertFalse(status)
+        self.assertTrue(mock_exists.call_count, 1)
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, False]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        lrepo.cur_repodir = "IMAGE"
+        lrepo.cur_tagdir = "TAG"
+        status = lrepo.add_image_layer("FILE")
+        self.assertFalse(status)
+        self.assertTrue(mock_exists.call_count, 2)
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, True]
+        mock_base.return_value = "file1"
+        mock_islink.return_value = True
+        mock_fu.return_value.remove.return_value = None
+        mock_symln.return_value = None
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        lrepo.cur_repodir = "IMAGE"
+        lrepo.cur_tagdir = "TAG"
+        status = lrepo.add_image_layer("FILE")
+        self.assertTrue(status)
+        self.assertTrue(mock_base.called)
+        self.assertTrue(mock_fu.return_value.remove.called)
+        self.assertTrue(mock_islink.called)
+        self.assertTrue(mock_symln.called)
+
+    @patch('udocker.container.localrepo.os.makedirs')
+    @patch('udocker.container.localrepo.os.path.exists')
+    @patch('udocker.container.localrepo.FileUtil')
+    def test_36_setup_imagerepo(self, mock_fu, mock_exists,
+                                mock_mkdirs):
+        """Test36 LocalRepository().setup_imagerepo()."""
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.setup_imagerepo("")
+        self.assertEqual(status, None)
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.return_value = True
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.setup_imagerepo("IMAGE")
+        expected_directory = lrepo.reposdir + "/IMAGE"
+        self.assertEqual(lrepo.cur_repodir, expected_directory)
+        self.assertFalse(status)
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.return_value = False
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.setup_imagerepo("IMAGE")
+        expected_directory = lrepo.reposdir + "/IMAGE"
+        self.assertTrue(mock_mkdirs.called)
+        self.assertEqual(lrepo.cur_repodir, expected_directory)
+        self.assertTrue(status)
+
+    @patch('udocker.container.localrepo.os.makedirs')
+    @patch('udocker.container.localrepo.os.path.exists')
+    @patch('udocker.container.localrepo.FileUtil')
+    def test_37_setup_tag(self, mock_fu, mock_exists, mock_mkdirs):
+        """Test37 LocalRepository().setup_tag()."""
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.return_value = False
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        lrepo.cur_repodir = lrepo.reposdir + "/IMAGE"
+        with patch(BOPEN, mock_open()) as mopen:
+            status = lrepo.setup_tag("NEWTAG")
+            self.assertTrue(mock_mkdirs.called)
+            expected_directory = lrepo.reposdir + "/IMAGE/NEWTAG"
+            self.assertEqual(lrepo.cur_tagdir, expected_directory)
+            self.assertTrue(mopen.called)
+            self.assertTrue(status)
+
+    @patch('udocker.container.localrepo.os.listdir')
+    @patch('udocker.container.localrepo.os.path.exists')
+    @patch('udocker.container.localrepo.FileUtil')
+    def test_38_set_version(self, mock_fu, mock_exists,
+                            mock_listdir):
+        """Test38 LocalRepository().set_version()."""
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.set_version("v1")
+        self.assertFalse(mock_exists.called)
+        self.assertFalse(status)
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [False, False]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        lrepo.cur_repodir = lrepo.reposdir + "/IMAGE"
+        lrepo.cur_tagdir = lrepo.cur_repodir + "/TAG"
+        status = lrepo.set_version("v1")
+        self.assertTrue(mock_exists.call_count, 1)
+        self.assertFalse(mock_listdir.called)
+        self.assertFalse(status)
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, False]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        lrepo.cur_repodir = lrepo.reposdir + "/IMAGE"
+        lrepo.cur_tagdir = lrepo.cur_repodir + "/TAG"
+        status = lrepo.set_version("v1")
+        self.assertTrue(mock_exists.call_count, 2)
+        self.assertFalse(mock_listdir.called)
+        self.assertFalse(status)
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, True, True, True]
+        mock_listdir.return_value = ["file1"]
+        mock_fu.return_value.remove.side_effect = \
+            [None, None]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.set_version("v2")
+        self.assertFalse(status)
+        self.assertTrue(mock_exists.call_count, 3)
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, True, False, False]
+        mock_listdir.return_value = ["file1"]
+        mock_fu.return_value.remove.side_effect = \
+            [None, None]
+        with patch(BOPEN, mock_open()) as mopen:
+            lrepo = LocalRepository(UDOCKER_TOPDIR)
+            status = lrepo.set_version("v2")
+            # self.assertTrue(status)
+            self.assertTrue(mock_exists.call_count, 4)
+            # self.assertTrue(mopen.called)
+
+    @patch.object(LocalRepository, 'load_json')
+    @patch('udocker.container.localrepo.os.path.exists')
+    @patch('udocker.container.localrepo.FileUtil')
+    def test_39__get_image_attributes_v1(self, mock_fu, mock_exists,
+                                         mock_loadjson):
+        """Test39 LocalRepository()._get_image_attributes_v1()."""
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_loadjson.return_value = None
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._get_image_attributes_v1("/cont")
+        self.assertEqual(status, (None, None))
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_loadjson.return_value = ["lname1"]
+        mock_exists.side_effect = [False, False]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._get_image_attributes_v1("/cont")
+        self.assertEqual(status, (None, None))
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_loadjson.side_effect = [["lname1"], ["lname1"]]
+        mock_exists.side_effect = [True, True]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._get_image_attributes_v1("/cont")
+        self.assertEqual(status, (['lname1'], ['/cont/lname1.layer']))
+
+    @patch('udocker.container.localrepo.json.loads')
+    @patch('udocker.container.localrepo.os.path.exists')
+    @patch('udocker.container.localrepo.FileUtil')
+    def test_40__get_image_attributes_v2_s1(self, mock_fu, mock_exists,
+                                            mock_jload):
+        """Test40 LocalRepository()._get_image_attributes_v2_s1()."""
+        manifest = {
+            "fsLayers": ({"blobSum": "foolayername"},),
+            "history": ({"v1Compatibility": '["foojsonstring"]'},)
+        }
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [False, False]
+        mock_jload.return_value = manifest
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._get_image_attributes_v2_s1("/cont", manifest)
+        self.assertEqual(status, (None, None))
+
+        manifest = {
+            "fsLayers": ({"blobSum": "foolayername"},),
+            "history": ({"v1Compatibility": '["foojsonstring"]'},)
+        }
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, True]
+        mock_jload.return_value = manifest
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._get_image_attributes_v2_s1("/cont", manifest)
+        self.assertEqual(status, (manifest, ['/cont/foolayername']))
+
+    @patch('udocker.container.localrepo.json.loads')
+    @patch('udocker.container.localrepo.os.path.exists')
+    @patch('udocker.container.localrepo.FileUtil')
+    def test_41__get_image_attributes_v2_s2(self, mock_fu, mock_exists,
+                                            mock_jload):
+        """Test41 LocalRepository()._get_image_attributes_v2_s2()."""
+        manifest = {
+            "layers": ({"digest": "foolayername"},),
+            "config": ({"digest": '["foojsonstring"]'},)
+        }
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [False, False]
+        mock_jload.return_value = manifest
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._get_image_attributes_v2_s2("/cont", manifest)
+        self.assertEqual(status, (None, None))
+
+        manifest = {
+            "layers": ({"digest": "foolayername"},),
+            "config": ({"digest": '["foojsonstring"]'},)
+        }
+        res = (['foojsonstring'], ['/cont/foolayername'])
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, True]
+        mock_jload.return_value = manifest
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._get_image_attributes_v2_s2("/cont", manifest)
+        self.assertEqual(status, (None, ['/cont/foolayername']))
+
+    @patch.object(LocalRepository, '_get_image_attributes_v2_s2')
+    @patch.object(LocalRepository, '_get_image_attributes_v2_s1')
+    @patch.object(LocalRepository, '_get_image_attributes_v1')
+    @patch.object(LocalRepository, 'load_json')
+    @patch('udocker.container.localrepo.os.path.exists')
+    @patch('udocker.container.localrepo.FileUtil')
+    def test_42_get_image_attributes(self, mock_fu, mock_exists,
+                                     mock_loadjson, mock_attrv1,
+                                     mock_attrv1s1, mock_attrv1s2):
+        """Test42 LocalRepository().get_image_attributes()."""
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [False, False]
+        mock_loadjson.return_value = None
+        mock_attrv1.return_value = (None, None)
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.get_image_attributes()
+        self.assertEqual(status, (None, None))
+        self.assertTrue(mock_exists.call_count, 2)
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, False]
+        mock_loadjson.return_value = None
+        mock_attrv1.return_value = (['lname1'], ['/cont/lname1.layer'])
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.get_image_attributes()
+        self.assertEqual(status, (['lname1'], ['/cont/lname1.layer']))
+        self.assertTrue(mock_exists.call_count, 1)
+        self.assertTrue(mock_attrv1.call_count, 1)
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        manifest = {
+            "fsLayers": ({"blobSum": "foolayername"},),
+            "history": ({"v1Compatibility": '["foojsonstring"]'},)
+        }
+        mock_exists.side_effect = [False, True]
+        mock_loadjson.return_value = manifest
+        mock_attrv1s1.return_value = (['lname1'], ['/cont/lname1.layer'])
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.get_image_attributes()
+        self.assertEqual(status, (['lname1'], ['/cont/lname1.layer']))
+        self.assertTrue(mock_exists.call_count, 1)
+        self.assertTrue(mock_attrv1s1.call_count, 1)
+
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        manifest = {
+            "layers": ({"digest": "foolayername"},),
+            "config": ({"digest": '["foojsonstring"]'},)
+        }
+        mock_exists.side_effect = [False, True]
+        mock_loadjson.return_value = manifest
+        mock_attrv1s2.return_value = (['lname1'], ['/cont/lname1.layer'])
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo.get_image_attributes()
+        self.assertEqual(status, (['lname1'], ['/cont/lname1.layer']))
+        self.assertTrue(mock_exists.call_count, 1)
+        self.assertTrue(mock_attrv1s2.call_count, 1)
 
 
+    @patch('udocker.container.localrepo.json.dump')
+    @patch('udocker.container.localrepo.os.path.exists')
+    @patch('udocker.container.localrepo.FileUtil')
+    def test_43_save_json(self, mock_fu, mock_exists, mock_jsondump):
+        """Test43 LocalRepository().save_json()."""
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, True]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        lrepo.cur_repodir = ""
+        lrepo.cur_tagdir = ""
+        status = lrepo.save_json("filename", "data")
+        self.assertFalse(mock_exists.called)
+        self.assertFalse(status)
 
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [False, False]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        lrepo.cur_repodir = lrepo.reposdir + "/IMAGE"
+        lrepo.cur_tagdir = lrepo.cur_repodir + "/TAG"
+        status = lrepo.save_json("filename", "data")
+        self.assertTrue(mock_exists.call_count, 1)
+        self.assertFalse(status)
 
-    # @patch('udocker.container.localrepo.FileUtil.remove')
-    # @patch('udocker.container.localrepo.os.path.islink')
-    # @patch('udocker.container.localrepo.os.path.exists')
-    # @patch('udocker.container.localrepo.FileUtil')
-    # def test_24_add_image_layer(self, mock_futil, mock_exists,
-    #                             mock_islink, mock_remove):
-    #     """Test LocalRepository().add_image_layer()."""
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     lrepo.cur_repodir = ""
-    #     lrepo.cur_tagdir = ""
-    #     status = lrepo.add_image_layer("FILE")
-    #     self.assertFalse(status)
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, False]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        lrepo.cur_repodir = lrepo.reposdir + "/IMAGE"
+        lrepo.cur_tagdir = lrepo.cur_repodir + "/TAG"
+        status = lrepo.save_json("filename", "data")
+        self.assertTrue(mock_exists.call_count, 2)
+        self.assertFalse(status)
 
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     lrepo.cur_repodir = "IMAGE"
-    #     lrepo.cur_tagdir = "TAG"
-    #     status = lrepo.add_image_layer("FILE")
-    #     self.assertTrue(status)
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, True]
+        with patch(BOPEN, mock_open()) as mopen:
+            lrepo = LocalRepository(UDOCKER_TOPDIR)
+            lrepo.cur_repodir = lrepo.reposdir + "/IMAGE"
+            lrepo.cur_tagdir = lrepo.cur_repodir + "/TAG"
+            status = lrepo.save_json("filename", "data")
+            self.assertTrue(mock_exists.call_count, 2)
+            self.assertTrue(mopen.called)
+            self.assertTrue(status)
 
-    #     mock_exists.return_value = False
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.add_image_layer("FILE")
-    #     self.assertFalse(status)
-
-    #     mock_exists.return_value = True
-    #     mock_islink.return_value = True
-    #     mock_remove.return_value = True
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.add_image_layer("FILE")
-    #     self.assertTrue(mock_futil.called)
-    #     # self.assertTrue(status)
-
-    #     mock_exists.return_value = True
-    #     mock_islink.return_value = False
-    #     mock_futil.reset_mock()
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.add_image_layer("FILE")
-    #     # self.assertFalse(mock_futil.called)
-    #     # self.assertTrue(status)
-
-    # @patch('udocker.container.localrepo.os.makedirs')
-    # @patch('udocker.container.localrepo.os.path.exists')
-    # def test_25_setup_imagerepo(self, mock_exists, mock_makedirs):
-    #     """Test LocalRepository().setup_imagerepo()."""
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.setup_imagerepo("")
-    #     self.assertFalse(status)
-
-    #     mock_exists.return_value = True
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.setup_imagerepo("IMAGE")
-    #     expected_directory = lrepo.reposdir + "/IMAGE"
-    #     self.assertEqual(lrepo.cur_repodir, expected_directory)
-    #     self.assertFalse(status)
-
-    #     mock_exists.return_value = False
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.setup_imagerepo("IMAGE")
-    #     expected_directory = lrepo.reposdir + "/IMAGE"
-    #     self.assertTrue(mock_makedirs.called)
-    #     self.assertEqual(lrepo.cur_repodir, expected_directory)
-    #     self.assertTrue(status)
-
-    # @patch('udocker.container.localrepo.os.makedirs')
-    # @patch('udocker.container.localrepo.os.path.exists')
-    # def test_26_setup_tag(self, mock_exists, mock_makedirs):
-    #     """Test LocalRepository().setup_tag()."""
-    #     mock_exists.return_value = False
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     lrepo.cur_repodir = lrepo.reposdir + "/IMAGE"
-    #     with patch(BOPEN, mock_open()) as mopen:
-    #         status = lrepo.setup_tag("NEWTAG")
-    #         self.assertTrue(mock_makedirs.called)
-    #         expected_directory = lrepo.reposdir + "/IMAGE/NEWTAG"
-    #         self.assertEqual(lrepo.cur_tagdir, expected_directory)
-    #         self.assertTrue(mopen.called)
-    #         self.assertTrue(status)
-
-    # @patch('udocker.container.localrepo.os.listdir')
-    # @patch('udocker.container.localrepo.os.makedirs')
-    # @patch('udocker.container.localrepo.os.path.exists')
-    # def test_27_set_version(self, mock_exists, mock_makedirs, mock_listdir):
-    #     """Test LocalRepository().set_version()."""
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.set_version("v1")
-    #     self.assertFalse(mock_exists.called)
-    #     self.assertFalse(status)
-
-    #     mock_exists.return_value = False
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     lrepo.cur_repodir = lrepo.reposdir + "/IMAGE"
-    #     lrepo.cur_tagdir = lrepo.cur_repodir + "/TAG"
-    #     status = lrepo.set_version("v1")
-    #     self.assertFalse(mock_listdir.called)
-    #     self.assertFalse(status)
-
-    #     mock_exists.return_value = True
-    #     with patch(BOPEN, mock_open()) as mopen:
-    #         lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #         status = lrepo.set_version("v1")
-    #         # self.assertTrue(mock_listdir.called)
-    #         # self.assertTrue(mopen.called)
-    #         # self.assertTrue(status)
-
-    # # @patch.object(LocalRepository, 'save_json')
-    # # @patch.object(LocalRepository, 'load_json')
-    # # @patch('udocker.container.localrepo.os.path.exists')
-    # # def test_28_get_image_attributes(self, mock_exists, mock_loadjson,
-    # #                                  mock_savejson):
-    # #     """Test LocalRepository().get_image_attributes()."""
-    # #     mock_exists.return_value = True
-    # #     mock_loadjson.return_value = None
-    # #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    # #     status = lrepo.get_image_attributes()
-    # #     self.assertEqual((None, None), status)
-
-    # #     mock_exists.side_effect = [True, False]
-    # #     mock_loadjson.side_effect = [("foolayername",), ]
-    # #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    # #     status = lrepo.get_image_attributes()
-    # #     self.assertEqual((None, None), status)
-
-    # #     mock_exists.side_effect = [True, True, False]
-    # #     mock_loadjson.side_effect = [("foolayername",), "foojson"]
-    # #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    # #     status = lrepo.get_image_attributes()
-    # #     self.assertEqual((None, None), status)
-
-    # #     mock_exists.side_effect = [True, True, True]
-    # #     mock_loadjson.side_effect = [("foolayername",), "foojson"]
-    # #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    # #     status = lrepo.get_image_attributes()
-    # #     self.assertEqual(('foojson', ['/foolayername.layer']), status)
-
-    # #     mock_exists.side_effect = [False, True]
-    # #     mock_loadjson.side_effect = [None, ]
-    # #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    # #     status = lrepo.get_image_attributes()
-    # #     self.assertEqual((None, None), status)
-
-    # #     mock_exists.side_effect = [False, True, False]
-    # #     manifest = {
-    # #         "fsLayers": ({"blobSum": "foolayername"},),
-    # #         "history": ({"v1Compatibility": '["foojsonstring"]'},)
-    # #     }
-    # #     mock_loadjson.side_effect = [manifest, ]
-    # #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    # #     status = lrepo.get_image_attributes()
-    # #     self.assertEqual((None, None), status)
-
-    # #     mock_exists.side_effect = [False, True, True]
-    # #     mock_loadjson.side_effect = [manifest, ]
-    # #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    # #     status = lrepo.get_image_attributes()
-    # #     self.assertEqual(([u'foojsonstring'], ['/foolayername']), status)
-
-    # @patch('udocker.container.localrepo.json.dump')
-    # @patch('udocker.container.localrepo.os.path.exists')
-    # def test_29_save_json(self, mock_exists, mock_jsondump):
-    #     """Test LocalRepository().save_json()."""
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.save_json("filename", "data")
-    #     self.assertFalse(mock_exists.called)
-    #     self.assertFalse(status)
-
-    #     mock_exists.return_value = False
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     lrepo.cur_repodir = lrepo.reposdir + "/IMAGE"
-    #     lrepo.cur_tagdir = lrepo.cur_repodir + "/TAG"
-    #     status = lrepo.save_json("filename", "data")
-    #     self.assertTrue(mock_exists.called)
-    #     self.assertFalse(status)
-
-    #     mock_exists.reset_mock()
-    #     with patch(BOPEN, mock_open()) as mopen:
-    #         lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #         status = lrepo.save_json("/filename", "data")
-    #         self.assertTrue(mopen.called)
-    #         self.assertTrue(status)
-
-    #     mock_exists.reset_mock()
-    #     with patch(BOPEN, mock_open()) as mopen:
-    #         mopen.side_effect = IOError('foo')
-    #         lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #         status = lrepo.save_json("/filename", "data")
-    #         self.assertTrue(mopen.called)
-    #         self.assertFalse(status)
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_exists.side_effect = [True, True]
+        with patch(BOPEN, mock_open()) as mopen:
+            mopen.side_effect = IOError('foo')
+            lrepo = LocalRepository(UDOCKER_TOPDIR)
+            status = lrepo.save_json("/filename", "data")
+            self.assertTrue(mopen.called)
+            self.assertFalse(status)
 
     # @patch('udocker.container.localrepo.json.load')
     # @patch('udocker.container.localrepo.os.path.exists')
