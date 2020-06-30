@@ -1371,7 +1371,7 @@ class LocalRepositoryTestCase(TestCase):
             status = lrepo.load_json("filename")
             self.assertTrue(mock_exists.call_count, 2)
             self.assertTrue(mopen.called)
-            self.assertTrue(status)
+            self.assertEqual(status, None)
 
         mock_fu.return_value.register_prefix.side_effect = \
             [None, None, None]
@@ -1383,105 +1383,94 @@ class LocalRepositoryTestCase(TestCase):
             self.assertTrue(mopen.called)
             self.assertFalse(status)
 
+    @patch.object(LocalRepository, 'load_json')
+    @patch('udocker.container.localrepo.os.listdir')
+    @patch('udocker.container.localrepo.FileUtil')
+    def test_45__load_structure(self, mock_fu, mock_listdir,
+                                mock_json):
+        """Test45 LocalRepository()._load_structure().
+        Scan the repository structure of a given image tag.
+        """
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        mock_fu.return_value.isdir.return_value = False
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._load_structure("IMAGETAGDIR")
+        self.assertEqual(status, {"repolayers": dict()})
 
-    # @patch.object(LocalRepository, 'cd_container')
-    # @patch.object(LocalRepository, 'get_containers_list')
-    # def test_34_del_container(self, mock_cdcont, mock_getcl):
-    #     """Test LocalRepository().del_container()."""
-    #     container_id = "d2578feb-acfc-37e0-8561-47335f85e46a"
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.del_container(container_id)
-    #     self.assertTrue(mock_cdcont.called)
-    #     self.assertFalse(status)
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        res = {'repolayers': {}, 'ancestry': {'layers': 'foolayername'}}
+        mock_fu.return_value.isdir.return_value = True
+        mock_listdir.return_value = ["ancestry"]
+        jsload = {"layers": "foolayername"}
+        mock_json.return_value = jsload
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._load_structure("IMAGETAGDIR")
+        self.assertEqual(status, res)
 
-    #     mock_cdcont.return_value = ""
-    #     mock_getcl.return_value = "tmp"
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.del_container(container_id)
-    #     self.assertFalse(status)
+    @patch('udocker.container.localrepo.FileUtil')
+    def test_46__find_top_layer_id(self, mock_fu):
+        """Test46 LocalRepository()._find_top_layer_id"""
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        struct = ""
+        lid = ""
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._find_top_layer_id(struct, lid)
+        self.assertEqual(status, "")
 
-    #     mock_cdcont.return_value = "/tmp"
-    #     mock_getcl.return_value = "/tmp"
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo.del_container(container_id)
-    #     # self.assertTrue(status)
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        struct = {'repolayers': {"lay1": "l1",
+                                 "json": {"j1": 1, "parent": "123"}},
+                  'ancestry': {'layers': 'foolayername'}}
+        lid = "123"
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._find_top_layer_id(struct, lid)
+        self.assertEqual(status, "123")
 
-    # def test_35__relpath(self):
-    #     """Test LocalRepository()._relpath()."""
+    # def test_47__sorted_layers(self):
+    #     """Test47 LocalRepository()._sorted_layers"""
     #     pass
 
+    @patch('udocker.container.localrepo.FileUtil')
+    def test_48__split_layer_id(self, mock_fu):
+        """Test48 LocalRepository()._split_layer_id"""
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        lid = ("524b0c1e57f8ee5fee01a1decba2f30"
+               "1c324a6513ca3551021264e3aa7341ebc")
+        lidsha = "sha256:" + lid
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._split_layer_id(lidsha)
+        self.assertEqual(status, ["sha256", lid])
 
+        mock_fu.return_value.register_prefix.side_effect = \
+            [None, None, None]
+        lrepo = LocalRepository(UDOCKER_TOPDIR)
+        status = lrepo._split_layer_id(lid)
+        self.assertEqual(status, ("", lid))
 
-
-    # @patch('udocker.container.localrepo.FileUtil.remove')
-    # @patch('udocker.container.localrepo.os.path.islink')
-    # @patch('udocker.container.localrepo.os.readlink')
-    # @patch('udocker.container.localrepo.os.listdir')
-    # @patch('udocker.container.localrepo.os.path.realpath')
-    # def test_41__remove_layers(self, mock_realpath, mock_listdir,
-    #                            mock_readlink, mock_islink, mock_remove):
-    #     """Test LocalRepository()._remove_layers().
-    #     Remove link to image layer and corresponding layer
-    #     if not being used by other images.
-    #     """
-    #     mock_realpath.return_value = "/tmp"
-    #     mock_listdir.return_value = "file"
-    #     mock_islink.return_value = True
-    #     mock_readlink.return_value = "file"
-    #     tag_dir = "TAGDIR"
-    #     mock_remove.return_value = False
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     lrepo.reposdir = "/tmp"
-    #     status = lrepo._remove_layers(tag_dir, True)
-    #     self.assertTrue(status)
-
-    #     mock_remove.return_value = False
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     status = lrepo._remove_layers(tag_dir, False)
-    #     # (FIXME lalves): This is not OK, it should be False. Review this test.
-    #     self.assertFalse(status)
-
-
-    # @patch('udocker.container.localrepo.os.path.isdir')
-    # @patch.object(LocalRepository, 'load_json')
-    # @patch('udocker.container.localrepo.os.listdir')
-    # def test_44__load_structure(self, mock_listdir, mock_json, mock_isdir):
-    #     """Test LocalRepository()._load_structure().
-    #     Scan the repository structure of a given image tag.
-    #     """
-    #     mock_isdir.return_value = False
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     structure = lrepo._load_structure("IMAGETAGDIR")
-    #     # self.assertTrue(structure["layers"])
-
-    #     mock_isdir.return_value = True
-    #     mock_listdir.return_value = ["ancestry"]
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     lrepo.return_value = "JSON"
-    #     structure = lrepo._load_structure("IMAGETAGDIR")
-    #     # WIP
-    #     # self.assertTrue("JSON" in structure["ancestry"])
-
-    # def test_45__find_top_layer_id(self):
-    #     """Test LocalRepository()._find_top_layer_id"""
+    # def test_49__verify_layer_file(self):
+    #     """Test49 LocalRepository()._verify_layer_file"""
     #     pass
 
-    # def test_46__sorted_layers(self):
-    #     """Test LocalRepository()._sorted_layers"""
+    # def test_50__verify_image_v1(self):
+    #     """Test50 LocalRepository()._verify_image_v1"""
     #     pass
 
-    # def test_47__verify_layer_file(self):
-    #     """Test LocalRepository()._verify_layer_file"""
+    # def test_51__verify_image_v2_s1(self):
+    #     """Test51 LocalRepository()._verify_image_v2_s1"""
     #     pass
 
-    # @patch('udocker.container.localrepo.Msg')
-    # @patch.object(LocalRepository, '_load_structure')
-    # def test_48_verify_image(self, mock_lstruct, mock_msg):
-    #     """Test LocalRepository().verify_image()."""
-    #     mock_msg.level = 0
-    #     lrepo = LocalRepository(UDOCKER_TOPDIR)
-    #     lrepo.verify_image()
-    #     self.assertTrue(mock_lstruct.called)
+    # def test_52__verify_image_v2_s2(self):
+    #     """Test52 LocalRepository()._verify_image_v2_s2"""
+    #     pass
+
+    # def test_53_verify_image(self):
+    #     """Test53 LocalRepository().verify_image"""
+    #     pass
 
 
 if __name__ == '__main__':
