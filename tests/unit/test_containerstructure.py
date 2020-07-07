@@ -5,14 +5,9 @@
 udocker unit tests: ContainerStructure
 """
 import sys
-sys.path.append('.')
-sys.path.append('../../')
-
-import subprocess
 from unittest import TestCase, main
 from udocker.container.structure import ContainerStructure
 from udocker.config import Config
-from udocker.container.localrepo import LocalRepository
 try:
     from unittest.mock import patch, Mock
 except ImportError:

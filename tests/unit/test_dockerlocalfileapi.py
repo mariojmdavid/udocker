@@ -6,11 +6,10 @@ udocker unit tests: DockerLocalFileAPI
 from unittest import TestCase, main
 from udocker.docker import DockerLocalFileAPI
 from udocker.config import Config
-from udocker.container.localrepo import LocalRepository
 try:
-    from unittest.mock import patch
+    from unittest.mock import patch, Mock
 except ImportError:
-    from mock import patch
+    from mock import patch, Mock
 try:
     from StringIO import StringIO
 except ImportError:
@@ -21,64 +20,62 @@ class DockerLocalFileAPITestCase(TestCase):
     """Test DockerLocalFileAPI() manipulate Docker images."""
 
     def setUp(self):
-        self.conf = Config().getconf()
-        # self.conf['cmd'] = "/bin/bash"
-        # self.conf['cpu_affinity_exec_tools'] = \
-        #     (["numactl", "-C", "%s", "--", ], ["taskset", "-c", "%s", ])
-        # self.conf['valid_host_env'] = "HOME"
-        # self.conf['username'] = "user"
-        # self.conf['userhome'] = "/"
-        # self.conf['oskernel'] = "4.8.13"
-        # self.conf['location'] = ""
-        # self.conf['keystore'] = "KEYSTORE"
-        # self.conf['osversion'] = "OSVERSION"
-        # self.conf['arch'] = "ARCH"
-        self.local = LocalRepository(self.conf)
+        Config().getconf()
+        str_local = 'udocker.container.localrepo.LocalRepository'
+        self.lrepo = patch(str_local)
+        self.local = self.lrepo.start()
+        self.mock_lrepo = Mock()
+        self.local.return_value = self.mock_lrepo
 
     def tearDown(self):
-        pass
+        self.lrepo.stop()
 
-    # @patch('udocker.docker.CommonLocalFileApi')
-    # def test_01_init(self, mock_common):
-    #     """Test01 DockerLocalFileAPI() constructor."""
-    #     dlocapi = DockerLocalFileAPI(self.local)
-    #     self.assertTrue(mock_common.called)
+    def test_01_init(self):
+        """Test01 DockerLocalFileAPI() constructor."""
+        dlocapi = DockerLocalFileAPI(self.local)
+        self.assertEqual(dlocapi.localrepo, self.local)
 
     @patch('udocker.docker.os.listdir')
-    @patch('udocker.docker.os.path.isdir')
-    @patch('udocker.container.localrepo.LocalRepository.load_json', autospec=True)
-    def test_02__load_structure(self, mock_ljson, mock_isdir, mock_ldir):
+    @patch('udocker.docker.FileUtil.isdir')
+    def test_02__load_structure(self, mock_isdir, mock_ldir):
         """Test02 DockerLocalFileAPI()._load_structure()."""
+        res = {'repoconfigs': {}, 'repolayers': {}}
+        mock_ldir.return_value = ["xx"]
+        dlocapi = DockerLocalFileAPI(self.local)
+        structure = dlocapi._load_structure("/tmp")
+        self.assertEqual(structure, res)
+
         mock_isdir.return_value = False
-        dlocapi = DockerLocalFileAPI(self.local)
-        structure = dlocapi._load_structure("/tmp")
-        self.assertEqual(structure, {'repoconfigs': {}, 'repolayers': {}})
-
-        mock_isdir.return_value = True
         mock_ldir.return_value = ["repositories", ]
-        mock_ljson.return_value = {"REPO": "", }
+        self.local.load_json.return_value = {"REPO": "", }
         dlocapi = DockerLocalFileAPI(self.local)
         structure = dlocapi._load_structure("/tmp")
-        expected = {'repolayers': {}, 'repoconfigs': {}, 'repositories': {'REPO': ''}}
-        self.assertEqual(structure, expected)
+        res = {'repolayers': {}, 'repoconfigs': {},
+               'repositories': {'REPO': ''}}
+        self.assertEqual(structure, res)
 
-        mock_isdir.return_value = True
+        mock_isdir.return_value = False
         mock_ldir.return_value = ["manifest.json", ]
         dlocapi = DockerLocalFileAPI(self.local)
         structure = dlocapi._load_structure("/tmp")
-        expected = {'repolayers': {}, 'repoconfigs': {}, 'manifest': {'REPO': ''}}
-        self.assertEqual(structure, expected)
+        res = {'repolayers': {}, 'repoconfigs': {},
+               'manifest': {'REPO': ''}}
+        self.assertEqual(structure, res)
 
-        mock_isdir.return_value = True
-        mock_ldir.return_value = ["x" * 64 + ".json", ]
+        jfname = "x" * 70 + ".json"
+        res = {"repolayers": {},
+               "repoconfigs": {jfname: {"json": {"k": "v"}, 
+                                        "json_f": "/tmp/"+jfname}}}
+        mock_isdir.return_value = False
+        mock_ldir.return_value = [jfname, ]
+        self.local.load_json.return_value = {"k": "v"}
         dlocapi = DockerLocalFileAPI(self.local)
         structure = dlocapi._load_structure("/tmp")
-        # expected = {'layers': {}}
-        # self.assertEqual(structure, expected)
+        self.assertEqual(structure, res)
 
         mock_isdir.return_value = True
         mock_ldir.side_effect = [["x" * 64, ], ["VERSION", ], ]
-        mock_ljson.return_value = {"X": "", }
+        self.local.load_json.return_value = {"X": "", }
         dlocapi = DockerLocalFileAPI(self.local)
         structure = dlocapi._load_structure("/tmp")
         # expected = {'layers': {"x" * 64: {'VERSION': {'X': ''}}}}
@@ -86,7 +83,7 @@ class DockerLocalFileAPITestCase(TestCase):
 
         mock_isdir.return_value = True
         mock_ldir.side_effect = [["x" * 64, ], ["json", ], ]
-        mock_ljson.return_value = {"X": "", }
+        self.local.load_json.return_value = {"X": "", }
         dlocapi = DockerLocalFileAPI(self.local)
         structure = dlocapi._load_structure("/tmp")
         # expected = {'layers': {"x" * 64: {'json': {'X': ''},
@@ -95,7 +92,7 @@ class DockerLocalFileAPITestCase(TestCase):
 
         mock_isdir.return_value = True
         mock_ldir.side_effect = [["x" * 64, ], ["layer", ], ]
-        mock_ljson.return_value = {"X": "", }
+        self.local.load_json.return_value = {"X": "", }
         dlocapi = DockerLocalFileAPI(self.local)
         structure = dlocapi._load_structure("/tmp")
         # expected = {'layers': {"x" * 64: {
@@ -193,17 +190,6 @@ class DockerLocalFileAPITestCase(TestCase):
 
 
     ### NON existent methods, removed or moved to another class
-    # @patch('udocker.docker.os.rename')
-    # def test_05__copy_layer_to_repo(self, mock_rename):
-    #     """Test DockerLocalFileAPI()._copy_layer_to_repo()."""
-    #     self.local.layersdir = ""
-    #     dlocapi = DockerLocalFileAPI(self.local)
-    #     status = dlocapi._copy_layer_to_repo("/", "LID")
-    #     self.assertFalse(status)
-
-    #     dlocapi = DockerLocalFileAPI(self.local)
-    #     status = dlocapi._copy_layer_to_repo("/xxx.json", "LID")
-    #     self.assertTrue(status)
 
     # @patch('udocker.container.localrepo.LocalRepository.set_version', autospec=True)
     # @patch('udocker.container.localrepo.LocalRepository.setup_tag', autospec=True)
@@ -272,18 +258,6 @@ class DockerLocalFileAPITestCase(TestCase):
     #     self.assertEqual(status, ['IMAGE:TAG'])
 
 
-    # @patch('udocker.docker.subprocess.call')
-    # def test_08__untar_saved_container(self, mock_call):
-    #     """Test DockerLocalFileAPI()._untar_saved_container()."""
-    #     mock_call.return_value = True
-    #     dlocapi = DockerLocalFileAPI(self.local)
-    #     status = dlocapi._untar_saved_container("TARFILE", "DESTDIR")
-    #     self.assertFalse(status)
-
-    #     mock_call.return_value = False
-    #     dlocapi = DockerLocalFileAPI(self.local)
-    #     status = dlocapi._untar_saved_container("TARFILE", "DESTDIR")
-    #     self.assertTrue(status)
 
 
     # @patch('udocker.docker.time.strftime')
@@ -322,64 +296,6 @@ class DockerLocalFileAPITestCase(TestCase):
     #             'architecture': 'ARCH', 'os': 'OSVERSION',
     #             'id': 'LID', 'size': 123}
     #     self.assertEqual(status, meta)
-
-    # @patch('udocker.container.localrepo.LocalRepository.set_version', autospec=True)
-    # @patch('udocker.container.localrepo.LocalRepository.setup_tag', autospec=True)
-    # @patch('udocker.container.localrepo.LocalRepository.cd_imagerepo', autospec=True)
-    # @patch('udocker.docker.Unique.layer_v1')
-    # @patch('udocker.docker.os.rename')
-    # @patch('udocker.docker.FileUtil')
-    # @patch('udocker.docker.os.path.exists')
-    # def test_11_import_toimage(self, mock_exists, mock_futil, mock_rename,
-    #                            mock_v1, mock_cdimg, mock_settag,
-    #                            mock_setversion):
-    #     """Test DockerLocalFileAPI().import_toimage()."""
-    #     mock_exists.return_value = False
-    #     dlocapi = DockerLocalFileAPI(self.local)
-    #     status = dlocapi.import_toimage("TARFILE", "IMAGE", "TAG")
-    #     self.assertFalse(status)
-
-    #     mock_exists.return_value = True
-    #     mock_cdimg.return_value = "TAGDIR"
-    #     dlocapi = DockerLocalFileAPI(self.local)
-    #     status = dlocapi.import_toimage("TARFILE", "IMAGE", "TAG")
-    #     self.assertFalse(status)
-
-    #     mock_exists.return_value = True
-    #     mock_cdimg.return_value = ""
-    #     mock_settag.return_value = ""
-    #     dlocapi = DockerLocalFileAPI(self.local)
-    #     status = dlocapi.import_toimage("TARFILE", "IMAGE", "TAG")
-    #     self.assertFalse(status)
-
-    #     mock_exists.return_value = True
-    #     mock_cdimg.return_value = ""
-    #     mock_settag.return_value = "TAGDIR"
-    #     mock_setversion.return_value = False
-    #     dlocapi = DockerLocalFileAPI(self.local)
-    #     status = dlocapi.import_toimage("TARFILE", "IMAGE", "TAG")
-    #     self.assertFalse(status)
-
-    #     mock_exists.return_value = True
-    #     mock_cdimg.return_value = ""
-    #     mock_settag.return_value = "TAGDIR"
-    #     mock_setversion.return_value = True
-    #     mock_v1.return_value = "LAYERID"
-    #     dlocapi = DockerLocalFileAPI(self.local)
-    #     status = dlocapi.import_toimage("TARFILE", "IMAGE", "TAG")
-    #     self.assertEqual(status, "LAYERID")
-    #     self.assertTrue(mock_rename.called)
-
-    #     mock_rename.reset_mock()
-    #     mock_exists.return_value = True
-    #     mock_cdimg.return_value = ""
-    #     mock_settag.return_value = "TAGDIR"
-    #     mock_setversion.return_value = True
-    #     mock_v1.return_value = "LAYERID"
-    #     dlocapi = DockerLocalFileAPI(self.local)
-    #     status = dlocapi.import_toimage("TARFILE", "IMAGE", "TAG", False)
-    #     self.assertEqual(status, "LAYERID")
-    #     self.assertFalse(mock_rename.called)
 
 
 if __name__ == '__main__':
