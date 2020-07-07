@@ -73,31 +73,39 @@ class DockerLocalFileAPITestCase(TestCase):
         structure = dlocapi._load_structure("/tmp")
         self.assertEqual(structure, res)
 
+        fname = "x" * 64
+        res = {"repolayers": {fname: {"VERSION": {"k": "v"}}},
+               "repoconfigs": dict()}
         mock_isdir.return_value = True
-        mock_ldir.side_effect = [["x" * 64, ], ["VERSION", ], ]
-        self.local.load_json.return_value = {"X": "", }
+        mock_ldir.side_effect = [[fname, ], ["VERSION", ], ]
+        self.local.load_json.return_value = {"k": "v"}
         dlocapi = DockerLocalFileAPI(self.local)
         structure = dlocapi._load_structure("/tmp")
-        # expected = {'layers': {"x" * 64: {'VERSION': {'X': ''}}}}
-        # self.assertEqual(structure, expected)
+        self.assertEqual(structure, res)
 
+        fname = "x" * 64
+        fulllayer = "/tmp/" + fname + "/json"
+        res = {"repolayers": {fname: {"json": {"k": "v"},
+                                      "json_f": fulllayer}},
+               "repoconfigs": dict()}
         mock_isdir.return_value = True
-        mock_ldir.side_effect = [["x" * 64, ], ["json", ], ]
-        self.local.load_json.return_value = {"X": "", }
+        mock_ldir.side_effect = [[fname, ], ["json", ], ]
+        self.local.load_json.return_value = {"k": "v"}
         dlocapi = DockerLocalFileAPI(self.local)
         structure = dlocapi._load_structure("/tmp")
-        # expected = {'layers': {"x" * 64: {'json': {'X': ''},
-        #                                   'json_f': '/tmp/' + "x" * 64 + '/json'}}}
-        # self.assertEqual(structure, expected)
+        self.assertEqual(structure, res)
 
+        fname = "x" * 64
+        fulllayer = "/tmp/" + fname + "/layer1"
+        res = {"repolayers": {fname: {"layer_f": fulllayer}},
+               "repoconfigs": dict()}
         mock_isdir.return_value = True
-        mock_ldir.side_effect = [["x" * 64, ], ["layer", ], ]
-        self.local.load_json.return_value = {"X": "", }
+        mock_ldir.side_effect = [[fname, ], ["layer1", ], ]
+        self.local.load_json.return_value = {"k": "v"}
         dlocapi = DockerLocalFileAPI(self.local)
         structure = dlocapi._load_structure("/tmp")
-        # expected = {'layers': {"x" * 64: {
-        #     'layer_f': '/tmp/' + "x" * 64 + '/layer'}}}
-        # self.assertEqual(structure, expected)
+        self.assertEqual(structure, res)
+
 
     # def test_03__find_top_layer_id(self):
     #     """Test03 DockerLocalFileAPI()._find_top_layer_id()."""
