@@ -2,6 +2,9 @@
 """
 udocker unit tests: DockerLocalFileAPI
 """
+import sys
+sys.path.append('.')
+sys.path.append('../../')
 
 from unittest import TestCase, main
 from udocker.docker import DockerLocalFileAPI
@@ -106,18 +109,50 @@ class DockerLocalFileAPITestCase(TestCase):
         structure = dlocapi._load_structure("/tmp")
         self.assertEqual(structure, res)
 
+    def test_03__find_top_layer_id(self):
+        """Test03 DockerLocalFileAPI()._find_top_layer_id()."""
+        fname = "x" * 64
+        fulllayer = "/tmp/" + fname + "/layer1"
+        structure = dict()
+        dlocapi = DockerLocalFileAPI(self.local)
+        structure = dlocapi._find_top_layer_id(structure)
+        self.assertEqual(structure, "")
 
-    # def test_03__find_top_layer_id(self):
-    #     """Test03 DockerLocalFileAPI()._find_top_layer_id()."""
-    #     dlocapi = DockerLocalFileAPI(self.local)
+        lid = "12345"
+        fulllayer = "/tmp/" + lid + "/json"
+        struc = {"repolayers": {lid: {"json": {"parent": "v1"},
+                                      "json_f": fulllayer}},
+                 "repoconfigs": dict()}
+        dlocapi = DockerLocalFileAPI(self.local)
+        status = dlocapi._find_top_layer_id(struc, "v1")
+        self.assertEqual(status, lid)
 
-    # def test_04__sorted_layers(self):
-    #     """Test04 DockerLocalFileAPI()._sorted_layers()."""
-    #     dlocapi = DockerLocalFileAPI(self.local)
+    def test_04__sorted_layers(self):
+        """Test04 DockerLocalFileAPI()._sorted_layers()."""
+        lid = "12345"
+        fulllayer = "/tmp/" + lid + "/json"
+        struc = {"repolayers": {lid: {"json": {"layer": lid},
+                                      "json_f": fulllayer}},
+                 "repoconfigs": dict()}
+        dlocapi = DockerLocalFileAPI(self.local)
+        status = dlocapi._sorted_layers(struc, lid)
+        self.assertEqual(status, [lid])
 
-    # def test_05__get_from_manifest(self):
-    #     """Test05 DockerLocalFileAPI()._get_from_manifest()."""
-    #     dlocapi = DockerLocalFileAPI(self.local)
+    def test_05__get_from_manifest(self):
+        """Test05 DockerLocalFileAPI()._get_from_manifest()."""
+        struc = dict()
+        imgtag = "image:tag"
+        dlocapi = DockerLocalFileAPI(self.local)
+        status = dlocapi._get_from_manifest(struc, imgtag)
+        self.assertEqual(status, ("", []))
+
+        imgtag = "IMAGE"
+        struc = {"manifest": [{"RepoTags": {"IMAGE": {"TAG": "tag"}},
+                               "Layers": ["l1", "l2"],
+                               "Config": "conf"}]}
+        dlocapi = DockerLocalFileAPI(self.local)
+        status = dlocapi._get_from_manifest(struc, imgtag)
+        self.assertEqual(status, ("conf", ["l2", "l1"]))
 
     # def test_06__load_image_step2(self):
     #     """Test06 DockerLocalFileAPI()._load_image_step2()."""
