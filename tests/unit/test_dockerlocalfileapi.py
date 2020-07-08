@@ -158,25 +158,24 @@ class DockerLocalFileAPITestCase(TestCase):
     #     """Test06 DockerLocalFileAPI()._load_image_step2()."""
     #     dlocapi = DockerLocalFileAPI(self.local)
 
-    @patch.object(DockerLocalFileAPI, '_load_image')
+    @patch('udocker.docker.CommonLocalFileApi._load_image')
     def test_07__load_repositories(self, mock_loadi):
         """Test07 DockerLocalFileAPI()._load_repositories()."""
-        structure = {}
+        struct = dict()
         dlocapi = DockerLocalFileAPI(self.local)
-        status = dlocapi._load_repositories(structure)
+        status = dlocapi._load_repositories(struct)
         self.assertFalse(status)
 
-        structure = {'repositories': {'IMAGE': {'TAG': "tag", }, }, }
-        mock_loadi.return_value = False
+        struct = {"repositories": dict()}
+        dlocapi = DockerLocalFileAPI(self.local)
+        status = dlocapi._load_repositories(struct)
+        self.assertEqual(status, list())
+
+        structure = {"repositories": {"IMAGE": {"TAG": "tag", }, }, }
+        mock_loadi.return_value = ["image:tag"]
         dlocapi = DockerLocalFileAPI(self.local)
         status = dlocapi._load_repositories(structure)
-        self.assertFalse(status)
-
-        # structure = {'repositories': {'IMAGE': {'TAG': "tag", }, }, }
-        # mock_loadi.return_value = True
-        # dlocapi = DockerLocalFileAPI(self.local)
-        # status = dlocapi._load_repositories(structure)
-        # self.assertTrue(status)
+        self.assertEqual(status, ["image:tag"])
 
     @patch.object(DockerLocalFileAPI, '_load_repositories')
     @patch.object(DockerLocalFileAPI, '_load_structure')
