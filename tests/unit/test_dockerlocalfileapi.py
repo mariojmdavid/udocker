@@ -324,9 +324,47 @@ class DockerLocalFileAPITestCase(TestCase):
         status = dlocapi._save_image(imgrepo, tag, struc, tmp_imgdir)
         self.assertTrue(status)
 
-    # def test_10_save(self):
-    #     """Test10 DockerLocalFileAPI().save()."""
-    #     dlocapi = DockerLocalFileAPI(self.local)
+    @patch.object(DockerLocalFileAPI, '_save_image')
+    @patch('udocker.docker.FileUtil.remove')
+    @patch('udocker.docker.FileUtil.tar')
+    @patch('udocker.docker.os.makedirs')
+    @patch('udocker.docker.FileUtil.mktmp')
+    def test_10_save(self, mock_mktmp, mock_mkdir, mock_tar,
+                     mock_rm, mock_svimg):
+        """Test10 DockerLocalFileAPI().save()."""
+        imglist = list()
+        imgfile = ""
+        mock_mktmp.return_value = "/tmp/img1"
+        mock_mkdir.return_value = None
+        mock_rm.return_value = None
+        self.local.save_json.side_effect = [True, True]
+        dlocapi = DockerLocalFileAPI(self.local)
+        status = dlocapi.save(imglist, imgfile)
+        self.assertFalse(status)
+
+        imglist = [("/img1", "tag1"),]
+        imgfile = ""
+        mock_mktmp.return_value = "/tmp/img1"
+        mock_mkdir.return_value = None
+        mock_rm.return_value = None
+        mock_svimg.return_value = True
+        mock_tar.return_value = False
+        self.local.save_json.side_effect = [True, True]
+        dlocapi = DockerLocalFileAPI(self.local)
+        status = dlocapi.save(imglist, imgfile)
+        self.assertFalse(status)
+
+        imglist = [("/img1", "tag1"),]
+        imgfile = ""
+        mock_mktmp.return_value = "/tmp/img1"
+        mock_mkdir.return_value = None
+        mock_rm.return_value = None
+        mock_svimg.return_value = True
+        mock_tar.return_value = True
+        self.local.save_json.side_effect = [True, True]
+        dlocapi = DockerLocalFileAPI(self.local)
+        status = dlocapi.save(imglist, imgfile)
+        self.assertTrue(status)
 
 
 if __name__ == '__main__':
