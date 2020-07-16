@@ -6,11 +6,10 @@ udocker unit tests: DockerIoAPI
 from unittest import TestCase, main
 from udocker.docker import DockerIoAPI
 from udocker.config import Config
-from udocker.container.localrepo import LocalRepository
 try:
-    from unittest.mock import patch
+    from unittest.mock import patch, Mock
 except ImportError:
-    from mock import patch
+    from mock import patch, Mock
 
 try:
     from StringIO import StringIO
@@ -26,18 +25,22 @@ class DockerIoAPITestCase(TestCase):
 
     def setUp(self):
         Config().getconf()
-        self.local = LocalRepository()
+        str_local = 'udocker.container.localrepo.LocalRepository'
+        self.lrepo = patch(str_local)
+        self.local = self.lrepo.start()
+        self.mock_lrepo = Mock()
+        self.local.return_value = self.mock_lrepo
 
     def tearDown(self):
-        pass
+        self.lrepo.stop()
 
     @patch('udocker.docker.GetURL')
     def test_01_init(self, mock_geturl):
         """Test01 DockerIoAPI() constructor"""
         mock_geturl.return_value = None
         doia = DockerIoAPI(self.local)
-        # self.assertEqual(doia.index_url, self.conf['dockerio_index_url'])
-        # self.assertEqual(doia.registry_url, self.conf['dockerio_registry_url'])
+        self.assertEqual(doia.index_url, Config.conf['dockerio_index_url'])
+        self.assertEqual(doia.registry_url, Config.conf['dockerio_registry_url'])
         self.assertEqual(doia.v1_auth_header, "")
         self.assertEqual(doia.v2_auth_header, "")
         self.assertEqual(doia.v2_auth_token, "")
