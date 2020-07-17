@@ -185,36 +185,74 @@ class DockerIoAPITestCase(TestCase):
         status = doia._get_file(url, fname, cache)
         self.assertTrue(status)
 
-    # @patch('udocker.docker.Msg')
-    # def test_08__split_fields(self, mock_msg):
-    #     """Test08 DockerIoAPI()._split_fields()."""
-    #     mock_msg.level = 0
-    #     doia = DockerIoAPI(self.local)
+    def test_08__split_fields(self):
+        """Test08 DockerIoAPI()._split_fields()."""
+        buff = 'k1="v1",k2="v2"'
+        doia = DockerIoAPI(self.local)
+        status = doia._split_fields(buff)
+        self.assertEqual(status, {"k1": "v1", "k2": "v2"})
 
-    # @patch('udocker.docker.Msg')
-    # def test_09_is_v1(self, mock_msg):
-    #     """Test09 DockerIoAPI().is_v1()."""
-    #     mock_msg.level = 0
-    #     doia = DockerIoAPI(self.local)
+    @patch.object(DockerIoAPI, '_get_url')
+    def test_09_is_v1(self, mock_geturl):
+        """Test09 DockerIoAPI().is_v1()."""
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 200 Reason-Phrase",
+                    "X-ND-CURLSTATUS": 0}
+        buff = strio()
+        mock_geturl.return_value = (hdr, buff)
+        doia = DockerIoAPI(self.local)
+        status = doia.is_v1()
+        self.assertTrue(status)
 
-    # @patch('udocker.docker.Msg')
-    # def test_10_has_search_v1(self, mock_msg):
-    #     """Test10 DockerIoAPI().has_search_v1()."""
-    #     mock_msg.level = 0
-    #     doia = DockerIoAPI(self.local)
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 400 Reason-Phrase",
+                    "X-ND-CURLSTATUS": 0}
+        buff = strio()
+        mock_geturl.return_value = (hdr, buff)
+        doia = DockerIoAPI(self.local)
+        status = doia.is_v1()
+        self.assertFalse(status)
 
-    # @patch('udocker.docker.Msg')
-    # @patch('udocker.utils.curl.CurlHeader')
-    # @patch.object(DockerIoAPI, '_get_url')
-    # def test_11_get_v1_repo(self, mock_dgu, mock_hdr, mock_msg):
-    #     """Test11 DockerIoAPI().get_v1_repo"""
-    #     mock_msg.level = 0
-    #     mock_dgu.return_value = (mock_hdr, [])
-    #     imagerepo = "REPO"
-    #     doia = DockerIoAPI(self.local)
-    #     doia.index_url = "docker.io"
-    #     out = doia.get_v1_repo(imagerepo)
-    #     self.assertIsInstance(out, tuple)
+    @patch.object(DockerIoAPI, '_get_url')
+    def test_10_has_search_v1(self, mock_geturl):
+        """Test10 DockerIoAPI().has_search_v1()."""
+        url = "http://some1.org/file1"
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 200 Reason-Phrase",
+                    "X-ND-CURLSTATUS": 0}
+        buff = strio()
+        mock_geturl.return_value = (hdr, buff)
+        doia = DockerIoAPI(self.local)
+        status = doia.has_search_v1(url)
+        self.assertTrue(status)
+
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 400 Reason-Phrase",
+                    "X-ND-CURLSTATUS": 0}
+        buff = strio()
+        mock_geturl.return_value = (hdr, buff)
+        doia = DockerIoAPI(self.local)
+        status = doia.has_search_v1(url)
+        self.assertFalse(status)
+
+    @patch('udocker.docker.json.loads')
+    @patch.object(DockerIoAPI, '_get_url')
+    def test_11_get_v1_repo(self, mock_geturl, mock_jload):
+        """Test11 DockerIoAPI().get_v1_repo"""
+        imagerepo = "REPO"
+        hdr = type('test', (object,), {})()
+        hdr.data = {"x-docker-token": "12345"}
+        buff = strio()
+        mock_geturl.return_value = (hdr, buff)
+        mock_jload.return_value = {"k1": "v1"}
+        doia = DockerIoAPI(self.local)
+        doia.index_url = "docker.io"
+        status = doia.get_v1_repo(imagerepo)
+        self.assertEqual(status, ({"x-docker-token": "12345"}, {"k1": "v1"}))
 
     def test_12__get_v1_auth(self):
         """Test12 DockerIoAPI()._get_v1_auth"""
@@ -226,8 +264,9 @@ class DockerIoAPITestCase(TestCase):
 
         www_authenticate = ['Token']
         doia = DockerIoAPI(self.local)
+        doia.v1_auth_header = "Not Empty"
         out = doia._get_v1_auth(www_authenticate)
-        # self.assertEqual(out, "Not Empty")
+        self.assertEqual(out, "Not Empty")
 
     @patch('udocker.docker.Msg')
     @patch('udocker.utils.curl.CurlHeader')
@@ -320,30 +359,34 @@ class DockerIoAPITestCase(TestCase):
         out = doia.get_v1_layers_all(endpoint, layer_list)
         self.assertEqual(out, ['b.json', 'b.layer', 'a.json', 'a.layer'])
 
-    # @patch.object(DockerIoAPI, '_get_url')
-    # @patch('udocker.utils.curl.CurlHeader')
-    # @patch('udocker.docker.json.loads')
-    # def test_19__get_v2_auth(self, mock_jloads, mock_hdr, mock_dgu):
-    #     """Test19 DockerIoAPI()._get_v2_auth"""
-    #     fakedata = StringIO('token')
-    #     mock_dgu.return_value = (mock_hdr, fakedata)
-    #     mock_jloads.return_value = {'token': 'YYY'}
-    #     doia = DockerIoAPI(self.local)
-    #     doia.v2_auth_header = "v2 Auth Header"
-    #     doia.v2_auth_token = "v2 Auth Token"
-    #     www_authenticate = "Other Stuff".encode("utf8")
-    #     out = doia._get_v2_auth(www_authenticate, False)
-    #     self.assertEqual(out, "")
+    @patch.object(DockerIoAPI, '_get_url')
+    @patch('udocker.utils.curl.CurlHeader')
+    @patch('udocker.docker.json.loads')
+    def test_19__get_v2_auth(self, mock_jloads, mock_hdr, mock_dgu):
+        """Test19 DockerIoAPI()._get_v2_auth"""
+        fakedata = strio('token'.encode('utf-8'))
+        www_authenticate = "Other Stuff"
+        mock_dgu.return_value = (mock_hdr, fakedata)
+        mock_jloads.return_value = {'token': 'YYY'}
+        doia = DockerIoAPI(self.local)
+        doia.v2_auth_header = "v2 Auth Header"
+        doia.v2_auth_token = "v2 Auth Token"
+        out = doia._get_v2_auth(www_authenticate, False)
+        self.assertEqual(out, "")
 
-    #     www_authenticate = "Bearer realm=REALM".encode("utf8")
-    #     doia = DockerIoAPI(self.local)
-    #     out = doia._get_v2_auth(www_authenticate, False)
-    #     self.assertEqual(out, "Authorization: Bearer YYY")
+        www_authenticate = "Bearer realm=REALM"
+        mock_dgu.return_value = (mock_hdr, fakedata)
+        mock_jloads.return_value = {'token': 'YYY'}
+        doia = DockerIoAPI(self.local)
+        out = doia._get_v2_auth(www_authenticate, False)
+        self.assertEqual(out, "Authorization: Bearer YYY")
 
-    #     www_authenticate = "BASIC realm=Sonatype Nexus Repository".encode("utf8")
-    #     doia = DockerIoAPI(self.local)
-    #     out = doia._get_v2_auth(www_authenticate, False)
-    #     self.assertEqual(out, "Authorization: Basic %s" % doia.v2_auth_token)
+        www_authenticate = "BASIC realm=Sonatype Nexus Repository"
+        mock_dgu.return_value = (mock_hdr, fakedata)
+        mock_jloads.return_value = {'token': 'YYY'}
+        doia = DockerIoAPI(self.local)
+        out = doia._get_v2_auth(www_authenticate, False)
+        self.assertEqual(out, "Authorization: Basic %s" % doia.v2_auth_token)
 
     def test_20_get_v2_login_token(self):
         """Test20 DockerIoAPI().get_v2_login_token"""
@@ -371,19 +414,71 @@ class DockerIoAPITestCase(TestCase):
         out = doia.is_v2()
         self.assertFalse(out)
 
-        # needs auth to be working before
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 200 Reason-Phrase",
+                    "X-ND-CURLSTATUS": 0}
+        buff = strio()
+        mock_dgu.return_value = (hdr, buff)
         doia = DockerIoAPI(self.local)
         doia.registry_url = "https://registry-1.docker.io"
         out = doia.is_v2()
-        # self.assertTrue(out)
+        self.assertTrue(out)
 
-    # def test_23_has_search_v2(self):
-    #     """Test23 DockerIoAPI().has_search_v2"""
-    #     doia = DockerIoAPI(self.local)
+    @patch.object(DockerIoAPI, '_get_url')
+    def test_23_has_search_v2(self, mock_dgu):
+        """Test23 DockerIoAPI().has_search_v2"""
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 400 Reason-Phrase",
+                    "X-ND-CURLSTATUS": 0}
+        buff = strio()
+        mock_dgu.return_value = (hdr, buff)
+        doia = DockerIoAPI(self.local)
+        doia.registry_url = "http://www.docker.io"
+        out = doia.has_search_v2()
+        self.assertFalse(out)
 
-    # def test_24_get_v2_image_tags(self):
-    #     """Test24 DockerIoAPI().get_v2_image_tags"""
-    #     doia = DockerIoAPI(self.local)
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 200 Reason-Phrase",
+                    "X-ND-CURLSTATUS": 0}
+        buff = strio()
+        mock_dgu.return_value = (hdr, buff)
+        doia = DockerIoAPI(self.local)
+        doia.registry_url = "https://registry-1.docker.io"
+        out = doia.has_search_v2()
+        self.assertTrue(out)
+
+    @patch('udocker.docker.json.loads')
+    @patch.object(DockerIoAPI, '_get_url')
+    def test_24_get_v2_image_tags(self, mock_dgu, mock_jload):
+        """Test24 DockerIoAPI().get_v2_image_tags"""
+        imgrepo = "img1"
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 200 Reason-Phrase",
+                    "X-ND-CURLSTATUS": 0}
+        buff = strio()
+        mock_dgu.return_value = (hdr, buff)
+        mock_jload.return_value = list()
+        doia = DockerIoAPI(self.local)
+        doia.registry_url = "https://registry-1.docker.io"
+        out = doia.get_v2_image_tags(imgrepo)
+        self.assertEqual(out, list())
+
+        imgrepo = "img1"
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 200 Reason-Phrase",
+                    "X-ND-CURLSTATUS": 0}
+        buff = strio()
+        mock_dgu.return_value = (hdr, buff)
+        mock_jload.return_value = ["tag1", "tag2"]
+        doia = DockerIoAPI(self.local)
+        doia.registry_url = "https://registry-1.docker.io"
+        out = doia.get_v2_image_tags(imgrepo)
+        self.assertEqual(out, ["tag1", "tag2"])
 
     @patch('udocker.docker.Msg')
     @patch('udocker.utils.curl.CurlHeader')
@@ -435,10 +530,12 @@ class DockerIoAPITestCase(TestCase):
         mock_msg.level = 0
         mock_v2il.return_value = True
         imagerepo = "REPO"
-        fslayers = ["a", "b"]
+        fslayers = {"fsLayers": ({"blobSum": "foolayername"},),
+                    "history": ({"v1Compatibility": '["foojsonstring"]'},)
+                   }
         doia = DockerIoAPI(self.local)
-        # out = doia.get_v2_layers_all(imagerepo, fslayers)
-        # self.assertEqual(out, ['b.json', 'b.layer', 'a.json', 'a.layer'])
+        out = doia.get_v2_layers_all(imagerepo, fslayers)
+        self.assertEqual(out, ['foolayername'])
 
     @patch('udocker.docker.Msg')
     @patch('udocker.utils.curl.CurlHeader')
