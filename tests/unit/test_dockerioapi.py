@@ -3,6 +3,7 @@
 udocker unit tests: DockerIoAPI
 """
 
+import sys
 from unittest import TestCase, main
 from udocker.docker import DockerIoAPI
 from udocker.config import Config
@@ -11,10 +12,15 @@ try:
 except ImportError:
     from mock import patch, Mock
 
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
+# try:
+#     from StringIO import StringIO
+# except ImportError:
+#     from io import StringIO
+
+if sys.version_info[0] >= 3:
+    from io import BytesIO as strio
+else:
+    from StringIO import StringIO as strio
 
 
 class DockerIoAPITestCase(TestCase):
@@ -70,10 +76,8 @@ class DockerIoAPITestCase(TestCase):
         doia.set_index("https://index.docker.io/v1")
         self.assertEqual(doia.index_url, "https://index.docker.io/v1")
 
-    @patch('udocker.docker.Msg')
-    def test_05_is_repo_name(self, mock_msg):
+    def test_05_is_repo_name(self):
         """Test05 DockerIoAPI().is_repo_name()."""
-        mock_msg.level = 0
         doia = DockerIoAPI(self.local)
         self.assertFalse(doia.is_repo_name(""))
         self.assertFalse(doia.is_repo_name("socks5://user:pass@host:port"))
@@ -84,17 +88,102 @@ class DockerIoAPITestCase(TestCase):
         self.assertTrue(doia.is_repo_name("lipcomputing/os-cli-centos7"))
         self.assertTrue(doia.is_repo_name("lipcomputing/os-cli-centos7:latest"))
 
-    # @patch('udocker.docker.Msg')
-    # def test_06__get_url(self, mock_msg):
-    #     """Test06 DockerIoAPI()._get_url()."""
-    #     mock_msg.level = 0
-    #     doia = DockerIoAPI(self.local)
+    @patch('udocker.docker.GetURL.get_status_code')
+    @patch('udocker.docker.GetURL.get')
+    def test_06__get_url(self, mock_get, mock_getstatus):
+        """Test06 DockerIoAPI()._get_url()."""
+        args = ["http://some1.org"]
+        kwargs = list()
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 200 Reason-Phrase"}
+        buff = strio()
+        mock_get.return_value = (hdr, buff)
+        mock_getstatus.return_value = 200
+        doia = DockerIoAPI(self.local)
+        status = doia._get_url(args, kwargs)
+        self.assertEqual(status, (hdr, buff))
 
-    # @patch('udocker.docker.Msg')
-    # def test_07__get_file(self, mock_msg):
-    #     """Test07 DockerIoAPI()._get_file()."""
-    #     mock_msg.level = 0
-    #     doia = DockerIoAPI(self.local)
+        args = ["http://some1.org"]
+        kwargs = list()
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 400 Reason-Phrase",
+                    "X-ND-CURLSTATUS": 0,
+                    "location": "http://some1.org"}
+        buff = strio()
+        mock_get.return_value = (hdr, buff)
+        mock_getstatus.return_value = 400
+        doia = DockerIoAPI(self.local)
+        status = doia._get_url(args, kwargs)
+        self.assertEqual(status, (hdr, buff))
+
+        args = ["http://some1.org"]
+        kwargs = {"RETRY": True, "FOLLOW": True}
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 400 Reason-Phrase",
+                    "X-ND-CURLSTATUS": 0}
+        buff = strio()
+        mock_get.return_value = (hdr, buff)
+        mock_getstatus.return_value = 400
+        doia = DockerIoAPI(self.local)
+        status = doia._get_url(args, kwargs)
+        self.assertEqual(status, (hdr, buff))
+
+    @patch.object(DockerIoAPI, '_get_url')
+    @patch('udocker.docker.GetURL.get_status_code')
+    @patch('udocker.docker.FileUtil.size')
+    @patch('udocker.docker.GetURL.get_content_length')
+    @patch('udocker.docker.ChkSUM.hash')
+    def test_07__get_file(self, mock_hash, mock_getlength,
+                          mock_fusize, mock_status, mock_geturl):
+        """Test07 DockerIoAPI()._get_file()."""
+        cks = "af98ca7807fd3859c5bd876004fa7e960cecebddb342de1bc7f3b0e6f7dab415"
+        url = "http://some1.org/file1"
+        fname = "/sha256:" + cks
+        cache = 0
+        mock_hash.return_value = cks
+        doia = DockerIoAPI(self.local)
+        status = doia._get_file(url, fname, cache)
+        self.assertTrue(status)
+
+        cks = "af98ca7807fd3859c5bd876004fa7e960cecebddb342de1bc7f3b0e6f7dab415"
+        url = "http://some1.org/file1"
+        fname = ""
+        cache = 1
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 400 Reason-Phrase",
+                    "X-ND-CURLSTATUS": 0}
+        buff = strio()
+        mock_hash.return_value = cks
+        mock_geturl.return_value = (hdr, buff)
+        mock_getlength.return_value = 123
+        mock_fusize.return_value = 123
+        doia = DockerIoAPI(self.local)
+        doia.curl.cache_support = True
+        status = doia._get_file(url, fname, cache)
+        self.assertTrue(status)
+
+        cks = "af98ca7807fd3859c5bd876004fa7e960cecebddb342de1bc7f3b0e6f7dab415"
+        url = "http://some1.org/file1"
+        fname = cks + ".layer"
+        cache = 0
+        hdr = type('test', (object,), {})()
+        hdr.data = {"content-length": 10, 
+                    "X-ND-HTTPSTATUS": "HTTP-Version 400 Reason-Phrase",
+                    "X-ND-CURLSTATUS": 0}
+        buff = strio()
+        mock_hash.return_value = cks
+        mock_geturl.return_value = (hdr, buff)
+        mock_getlength.return_value = 123
+        mock_fusize.return_value = 123
+        mock_status.return_value = 200
+        doia = DockerIoAPI(self.local)
+        doia.curl.cache_support = False
+        status = doia._get_file(url, fname, cache)
+        self.assertTrue(status)
 
     # @patch('udocker.docker.Msg')
     # def test_08__split_fields(self, mock_msg):
