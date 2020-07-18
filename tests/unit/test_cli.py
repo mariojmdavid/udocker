@@ -208,6 +208,11 @@ class UdockerCLITestCase(TestCase):
         status = udoc._list_tags("t1")
         self.assertEqual(status, 0)
 
+        mock_gettags.return_value = None
+        udoc = UdockerCLI(self.local)
+        status = udoc._list_tags("t1")
+        self.assertEqual(status, 1)
+
     # def test_11_do_search(self):
     #     """Test11 UdockerCLI().do_search()."""
 
