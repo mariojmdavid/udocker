@@ -197,8 +197,26 @@ class UdockerCLITestCase(TestCase):
     # def test_08__search_print_lines(self):
     #     """Test08 UdockerCLI()._search_print_lines()."""
 
-    # def test_09__search_repositories(self):
+    # @patch('udocker.cli.DockerIoAPI.search_get_page')
+    # @patch('udocker.cli.HostInfo.termsize')
+    # def test_09__search_repositories(self, mock_termsz, mock_doiasearch):
     #     """Test09 UdockerCLI()._search_repositories()."""
+    #     repo_list = {"count": 1, "next": "", "previous": "",
+    #                  "results": [
+    #                      {
+    #                          "repo_name": "lipcomputing/ipyrad",
+    #                          "short_description": "Docker to run ipyrad",
+    #                          "star_count": 0,
+    #                          "pull_count": 188,
+    #                          "repo_owner": "",
+    #                          "is_automated": True,
+    #                          "is_official": False
+    #                      }]}
+    #     mock_termsz.return_value = (3, "")
+    #     mock_doiasearch.return_value = repo_list
+    #     udoc = UdockerCLI(self.local)
+    #     status = udoc._search_repositories("ipyrad")
+    #     self.assertEqual(status, 0)
 
     @patch('udocker.cli.DockerIoAPI.get_tags')
     def test_10__list_tags(self, mock_gettags):
@@ -213,8 +231,55 @@ class UdockerCLITestCase(TestCase):
         status = udoc._list_tags("t1")
         self.assertEqual(status, 1)
 
-    # def test_11_do_search(self):
-    #     """Test11 UdockerCLI().do_search()."""
+    @patch('udocker.cli.KeyStore.get')
+    @patch('udocker.cli.DockerIoAPI.set_v2_login_token')
+    @patch('udocker.cli.DockerIoAPI.search_init')
+    @patch.object(UdockerCLI, '_search_repositories')
+    @patch.object(UdockerCLI, '_list_tags')
+    @patch.object(UdockerCLI, '_split_imagespec')
+    @patch.object(UdockerCLI, '_set_repository')
+    def test_11_do_search(self, mock_setrepo, mock_split, mock_listtags,
+                          mock_searchrepo, mock_doiasearch, mock_doiasetv2,
+                          mock_ksget):
+        """Test11 UdockerCLI().do_search()."""
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_search(cmdp)
+        self.assertEqual(status, 1)
+
+        argv = ["udocker", "search", "--list-tags", "ipyrad"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_setrepo.return_value = None
+        mock_split.return_value = ("d1", "d2", "ipyrad", "d3")
+        mock_doiasearch.return_value = None
+        mock_ksget.return_value = "v2token1"
+        mock_doiasetv2.return_value = None
+        mock_listtags.return_value = ["t1", "t2"]
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_search(cmdp)
+        self.assertEqual(status, ["t1", "t2"])
+        self.assertTrue(mock_setrepo.called)
+        self.assertTrue(mock_doiasearch.called)
+        self.assertTrue(mock_ksget.called)
+        self.assertTrue(mock_doiasetv2.called)
+        self.assertTrue(mock_listtags.called)
+
+        argv = ["udocker", "search", "ipyrad"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_setrepo.return_value = None
+        mock_split.return_value = ("d1", "d2", "ipyrad", "d3")
+        mock_doiasearch.return_value = None
+        mock_ksget.return_value = "v2token1"
+        mock_doiasetv2.return_value = None
+        mock_searchrepo.return_value = 0
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_search(cmdp)
+        self.assertEqual(status, 0)
+        self.assertTrue(mock_searchrepo.called)
 
     # @patch('udocker.cmdparser.CmdParser.get', autospec=True)
     # @patch('udocker.cmdparser.CmdParser.missing_options', autospec=True)
