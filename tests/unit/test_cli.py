@@ -281,39 +281,93 @@ class UdockerCLITestCase(TestCase):
         self.assertEqual(status, 0)
         self.assertTrue(mock_searchrepo.called)
 
-    # @patch('udocker.cmdparser.CmdParser.get', autospec=True)
-    # @patch('udocker.cmdparser.CmdParser.missing_options', autospec=True)
-    # @patch('udocker.cli.Msg')
-    # def test_12_do_load(self, mock_msg, mock_miss, mock_get):
-    #     """Test12 UdockerCLI().do_load()."""
+    @patch('udocker.cli.Msg')
+    @patch('udocker.cli.LocalFileAPI.load')
+    @patch.object(UdockerCLI, '_check_imagerepo')
+    def test_12_do_load(self, mock_chkimg, mock_load, mock_msg):
+        """Test12 UdockerCLI().do_load()."""
+        mock_msg.level = 0
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_load(cmdp)
+        self.assertEqual(status, 1)
 
-    #     mock_msg.level = 0
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_miss.return_value = True
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_load(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "load", "-i", "ipyrad", "ipyimg"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_chkimg.return_value = False
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_load(cmdp)
+        self.assertEqual(status, 1)
+        self.assertFalse(mock_load.called)
 
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_miss.return_value = False
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_load(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "load", "-i", "ipyrad", "ipyimg"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_chkimg.return_value = True
+        mock_load.return_value = False
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_load(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(mock_load.called)
 
-    #     mock_get.side_effect = ["INFILE", "", "" "", "", ]
-    #     mock_miss.return_value = False
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_load(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "load", "-i", "ipyrad", "ipyimg"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_chkimg.return_value = True
+        mock_load.return_value = ['docker-repo1', 'docker-repo2']
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_load(cmdp)
+        self.assertEqual(status, 0)
 
-    #     mock_get.side_effect = ["INFILE", "", "" "", "", ]
-    #     mock_miss.return_value = False
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_load(self.cmdp)
-    #     self.assertEqual(status, 0)
+    @patch('udocker.cli.os.path.exists')
+    @patch('udocker.cli.LocalFileAPI.save')
+    @patch.object(UdockerCLI, '_check_imagespec')
+    def test_13_do_save(self, mock_chkimg, mock_save, mock_exists):
+        """Test13 UdockerCLI().do_save()."""
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_save(cmdp)
+        self.assertEqual(status, 1)
 
-    # def test_13_do_save(self):
-    #     """Test13 UdockerCLI().do_save()."""
+        argv = ["udocker", "save", "-o", "ipyrad", "ipyimg:latest"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_exists.return_value = True
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_save(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(mock_exists.called)
+        self.assertFalse(mock_chkimg.called)
+        self.assertFalse(mock_save.called)
+
+        argv = ["udocker", "save", "-o", "ipyrad", "ipyimg:latest"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_exists.return_value = False
+        mock_chkimg.return_value = ("ipyimg", "latest")
+        mock_save.return_value = False
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_save(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(mock_save.called)
+
+        argv = ["udocker", "save", "-o", "ipyrad", "ipyimg:latest"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_exists.return_value = False
+        mock_chkimg.return_value = ("ipyimg", "latest")
+        mock_save.return_value = True
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_save(cmdp)
+        self.assertTrue(mock_exists.called)
+        self.assertTrue(mock_chkimg.called)
+        self.assertTrue(mock_save.called)
+        self.assertEqual(status, 0)
 
     # @patch('udocker.cmdparser.CmdParser.get', autospec=True)
     # @patch('udocker.cmdparser.CmdParser.missing_options', autospec=True)
