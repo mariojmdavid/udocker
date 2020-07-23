@@ -369,85 +369,187 @@ class UdockerCLITestCase(TestCase):
         self.assertTrue(mock_save.called)
         self.assertEqual(status, 0)
 
-    # @patch('udocker.cmdparser.CmdParser.get', autospec=True)
-    # @patch('udocker.cmdparser.CmdParser.missing_options', autospec=True)
-    # @patch('udocker.cli.UdockerCLI._check_imagespec')
-    # @patch('udocker.cli.KeyStore')
-    # @patch('udocker.cli.DockerIoAPI')
-    # @patch('udocker.cli.Msg')
-    # def test_14_do_import(self, mock_msg, mock_dioapi,
-    #                       mock_ks, mock_chkimg, mock_miss, mock_get):
-    #     """Test14 UdockerCLI().do_import()."""
+    @patch('udocker.cli.LocalFileAPI.import_toimage')
+    @patch('udocker.cli.LocalFileAPI.import_tocontainer')
+    @patch('udocker.cli.LocalFileAPI.import_clone')
+    @patch('udocker.cli.Msg')
+    @patch.object(UdockerCLI, '_check_imagespec')
+    def test_14_do_import(self, mock_chkimg, mock_msg, mock_impclone,
+                          mock_impcont, mock_impimg):
+        """Test14 UdockerCLI().do_import()."""
+        mock_msg.level = 0
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_import(cmdp)
+        self.assertEqual(status, 1)
+        self.assertFalse(mock_chkimg.called)
+        self.assertFalse(mock_impclone.called)
+        self.assertFalse(mock_impcont.called)
+        self.assertFalse(mock_impimg.called)
 
-    #     mock_msg.level = 0
-    #     cmd_options = [False, False, "", False,
-    #                    "INFILE", "IMAGE", "" "", "", ]
-    #     mock_get.side_effect = ["", "", "", "", "", "", "", "", "", ]
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_import(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "import", "ipyrad.tar", "ipyrad:latest"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_chkimg.return_value = ("", "latest")
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_import(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(mock_chkimg.called)
+        self.assertFalse(mock_impimg.called)
 
-    #     mock_get.side_effect = cmd_options
-    #     mock_chkimg.return_value = ("", "")
-    #     mock_miss.return_value = False
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_import(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "import", "ipyrad.tar", "ipyrad:latest"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_chkimg.return_value = ("ipyrad", "latest")
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_import(cmdp)
+        self.assertEqual(status, 0)
+        self.assertTrue(mock_chkimg.called)
+        self.assertTrue(mock_impimg.called)
 
-    #     mock_get.side_effect = cmd_options
-    #     mock_chkimg.return_value = ("IMAGE", "")
-    #     mock_miss.return_value = True
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_import(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "import", "--clone", "ipyrad.tar", "ipyrad:latest"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_chkimg.return_value = ("ipyrad", "latest")
+        mock_impclone.return_value = "12345"
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_import(cmdp)
+        self.assertEqual(status, 0)
+        self.assertFalse(mock_impcont.called)
+        self.assertTrue(mock_impclone.called)
 
-    #     mock_get.side_effect = cmd_options
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     mock_miss.return_value = False
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_import(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "import", "--tocontainer",
+                "ipyrad.tar", "ipyrad:latest"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_chkimg.return_value = ("ipyrad", "latest")
+        mock_impcont.return_value = "12345"
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_import(cmdp)
+        self.assertEqual(status, 0)
+        self.assertTrue(mock_impcont.called)
 
-        # mock_get.side_effect = cmd_options
-        # mock_chkimg.return_value = ("IMAGE", "TAG")
-        # mock_miss.return_value = False
-        # udoc = UdockerCLI(self.local)
-        # status = udoc.do_import(self.cmdp)
-        # self.assertEqual(status, 0)
+    @patch('udocker.cli.ContainerStructure')
+    def test_15_do_export(self, mock_cs):
+        """Test15 UdockerCLI().do_export()."""
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_export(cmdp)
+        self.assertEqual(status, 1)
 
-    # def test_15_do_export(self):
-    #     """Test15 UdockerCLI().do_export()."""
+        argv = ["udocker", "export", "-o", "ipyrad.tar", "ipyrad:latest"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = ""
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_export(cmdp)
+        self.assertEqual(status, 1)
 
-    # @patch('udocker.container.localrepo.LocalRepository.get_container_id', autospec=True)
-    # @patch('udocker.cmdparser.CmdParser.get', autospec=True)
-    # @patch('udocker.cli.Msg')
-    # def test_16_do_clone(self, mock_msg, mock_get, mock_contid):
-    #     """Test16 UdockerCLI().do_clone()."""
+        argv = ["udocker", "export", "-o", "ipyrad.tar", "ipyrad:latest"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_cs.return_value.export_tofile.return_value = False
+        self.local.get_container_id.return_value = "12345"
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_export(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(mock_cs.called)
+        self.assertTrue(self.local.get_container_id.called)
 
-    #     mock_msg.level = 0
-    #     mock_get.side_effect = ["name", "P1", "" "", "", ]
-    #     mock_contid.return_value = ""
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_clone(self.cmdp)
-    #     self.assertEqual(status, 1)
-    #     self.assertTrue(mock_msg.return_value.err.called)
+        argv = ["udocker", "export", "-o", "ipyrad.tar", "ipyrad:latest"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_cs.return_value.export_tofile.return_value = True
+        self.local.get_container_id.return_value = "12345"
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_export(cmdp)
+        self.assertEqual(status, 0)
 
-        # mock_get.side_effect = ["name", "P1", "" "", "", ]
-        # mock_contid.return_value = "1"
-        # udoc = UdockerCLI(self.local)
-        # status = udoc.do_clone(self.cmdp)
-        # self.assertEqual(status, 0)
-        # self.assertTrue(mock_msg.return_value.out.called)
+        argv = ["udocker", "export",
+                "--clone", "ipyrad:latest"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_cs.return_value.clone_tofile.return_value = True
+        self.local.get_container_id.return_value = "12345"
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_export(cmdp)
+        self.assertEqual(status, 0)
 
-        # mock_get.side_effect = ["name", "P1", "" "", "", ]
-        # mock_contid.return_value = ""
-        # udoc = UdockerCLI(self.local)
-        # status = udoc.do_clone(self.cmdp)
-        # self.assertEqual(status, 1)
-        # self.assertTrue(mock_msg.return_value.err.called_with("Error: cloning"))
+    @patch('udocker.cli.LocalFileAPI.clone_container')
+    @patch('udocker.cli.Msg')
+    def test_16_do_clone(self, mock_msg, mock_clone):
+        """Test16 UdockerCLI().do_clone()."""
+        mock_msg.level = 0
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_clone(cmdp)
+        self.assertEqual(status, 1)
 
-    # def test_17_do_login(self):
-    #     """Test17 UdockerCLI().do_login()."""
+        argv = ["udocker", "clone", "ipyradcont"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = ""
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_clone(cmdp)
+        self.assertEqual(status, 1)
+        self.assertFalse(mock_clone.called)
+        self.assertTrue(self.local.get_container_id.called)
+
+        argv = ["udocker", "clone", "ipyradcont"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = "12345"
+        mock_clone.return_value = "54321"
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_clone(cmdp)
+        self.assertEqual(status, 0)
+        self.assertTrue(mock_clone.called)
+
+    @patch('udocker.cli.KeyStore.put')
+    @patch('udocker.cli.DockerIoAPI.get_v2_login_token')
+    @patch.object(UdockerCLI, '_set_repository')
+    def test_17_do_login(self, mock_setrepo, mock_dioalog, mock_ksput):
+        """Test17 UdockerCLI().do_login()."""
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_login(cmdp)
+        self.assertEqual(status, 1)
+
+        argv = ["udocker", "login", "--username", "u1",
+                "--password", "xx"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_setrepo.return_value = None
+        mock_dioalog.return_value = "zx1"
+        mock_ksput.return_value = False
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_login(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(mock_setrepo.called)
+        self.assertTrue(mock_dioalog.called)
+        self.assertTrue(mock_ksput.called)
+
+        argv = ["udocker", "login", "--username", "u1",
+                "--password", "xx"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        mock_setrepo.return_value = None
+        mock_dioalog.return_value = "zx1"
+        mock_ksput.return_value = True
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_login(cmdp)
+        self.assertEqual(status, 0)
+        self.assertTrue(mock_setrepo.called)
+        self.assertTrue(mock_dioalog.called)
+        self.assertTrue(mock_ksput.called)
 
     # @patch('udocker.cmdparser.CmdParser.get', autospec=True)
     # @patch('udocker.cli.KeyStore')
