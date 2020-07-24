@@ -133,8 +133,36 @@ class UdockerCLITestCase(TestCase):
         status = udoc._check_imagerepo("AAA")
         self.assertEqual(status, "AAA")
 
-    # def test_05__set_repository(self):
-    #     """Test05 UdockerCLI()._set_repository()."""
+    @patch('udocker.cli.DockerIoAPI.set_index')
+    @patch('udocker.cli.DockerIoAPI.set_registry')
+    @patch('udocker.cli.DockerIoAPI.set_proxy')
+    @patch('udocker.cli.Msg')
+    def test_05__set_repository(self, mock_msg, mock_proxy,
+                                mock_reg, mock_idx):
+        """Test05 UdockerCLI()._set_repository()."""
+        mock_msg.level = 0
+        regist = "registry.io"
+        idxurl = "dockerhub.io"
+        imgrepo = "dockerhub.io/myimg:1.2"
+        mock_proxy.return_value = None
+        mock_reg.side_effect = [None, None, None, None]
+        mock_idx.side_effect = [None, None, None, None]
+        udoc = UdockerCLI(self.local)
+        status = udoc._set_repository(regist, idxurl, imgrepo, True)
+        self.assertTrue(status)
+        self.assertTrue(mock_proxy.called)
+        self.assertTrue(mock_reg.called)
+        self.assertTrue(mock_idx.called)
+
+        regist = ""
+        idxurl = ""
+        imgrepo = "https://dockerhub.io/myimg:1.2"
+        mock_proxy.return_value = None
+        mock_reg.side_effect = [None, None, None, None]
+        mock_idx.side_effect = [None, None, None, None]
+        udoc = UdockerCLI(self.local)
+        status = udoc._set_repository(regist, idxurl, imgrepo, False)
+        self.assertTrue(status)
 
     def test_06__split_imagespec(self):
         """Test06 UdockerCLI()._split_imagespec()."""
@@ -201,18 +229,18 @@ class UdockerCLITestCase(TestCase):
     # @patch('udocker.cli.HostInfo.termsize')
     # def test_09__search_repositories(self, mock_termsz, mock_doiasearch):
     #     """Test09 UdockerCLI()._search_repositories()."""
-    #     repo_list = {"count": 1, "next": "", "previous": "",
-    #                  "results": [
-    #                      {
-    #                          "repo_name": "lipcomputing/ipyrad",
-    #                          "short_description": "Docker to run ipyrad",
-    #                          "star_count": 0,
-    #                          "pull_count": 188,
-    #                          "repo_owner": "",
-    #                          "is_automated": True,
-    #                          "is_official": False
-    #                      }]}
-    #     mock_termsz.return_value = (3, "")
+    #     repo_list = [{"count": 1, "next": "", "previous": "",
+    #                   "results": [
+    #                       {
+    #                           "repo_name": "lipcomputing/ipyrad",
+    #                           "short_description": "Docker to run ipyrad",
+    #                           "star_count": 0,
+    #                           "pull_count": 188,
+    #                           "repo_owner": "",
+    #                           "is_automated": True,
+    #                           "is_official": False
+    #                       }]}]
+    #     mock_termsz.return_value = (40, "")
     #     mock_doiasearch.return_value = repo_list
     #     udoc = UdockerCLI(self.local)
     #     status = udoc._search_repositories("ipyrad")
@@ -1325,19 +1353,89 @@ class UdockerCLITestCase(TestCase):
         status = udoc.do_verify(cmdp)
         self.assertEqual(status, 0)
 
-    # @patch('udocker.cli.ExecutionMode')
-    # @patch('udocker.cli.KeyStore')
-    # @patch('udocker.cli.DockerIoAPI')
-    # @patch('udocker.cli.Msg')
-    # def test_35_do_setup(self, mock_msg, mock_dioapi, mock_ks,
-    #                      mock_exec, mock_miss, mock_get, mock_cdcont,
-    #                      mock_isprotcont):
-    #     """Test35 UdockerCLI().do_setup()."""
-    #     mock_msg.level = 0
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_setup(self.cmdp)
-    #     self.assertEqual(status, 1)
+    @patch('udocker.cli.ExecutionMode')
+    @patch('udocker.cli.NvidiaMode')
+    @patch('udocker.cli.FileUtil.rchmod')
+    @patch('udocker.cli.Unshare.namespace_exec')
+    @patch('udocker.cli.MountPoint.restore')
+    @patch('udocker.cli.FileBind.restore')
+    @patch('udocker.cli.Msg')
+    def test_35_do_setup(self, mock_msg, mock_fbrest, mock_mprest,
+                         mock_unshr, mock_furchmod, mock_nv, mock_execm):
+        """Test35 UdockerCLI().do_setup()."""
+        mock_msg.level = 0
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_setup(cmdp)
+        self.assertEqual(status, 1)
 
+        argv = ["udocker", "setup"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.cd_container.return_value = ""
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_setup(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(self.local.cd_container.called)
+
+        argv = ["udocker", "setup", "--execmode=P2", "mycont"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.cd_container.return_value = "/ROOT/cont1"
+        self.local.isprotected_container.return_value = True
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_setup(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(self.local.isprotected_container.called)
+
+        argv = ["udocker", "setup", "--execmode=P2",
+                "--purge", "--fixperm", "--nvidia", "mycont"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.cd_container.return_value = "/ROOT/cont1"
+        self.local.isprotected_container.return_value = False
+        mock_fbrest.return_value = None
+        mock_mprest.return_value = None
+        mock_unshr.return_value = None
+        mock_furchmod.return_value = None
+        mock_nv.return_value.set_mode.return_value = None
+        mock_execm.return_value.set_mode.return_value = True
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_setup(cmdp)
+        self.assertEqual(status, 0)
+        self.assertTrue(mock_fbrest.called)
+        self.assertTrue(mock_mprest.called)
+        self.assertTrue(mock_unshr.called)
+        self.assertTrue(mock_furchmod.called)
+        self.assertTrue(mock_nv.return_value.set_mode.called)
+        self.assertTrue(mock_execm.return_value.set_mode.called)
+
+        argv = ["udocker", "setup", "--execmode=P2",
+                "--purge", "--fixperm", "--nvidia", "mycont"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.cd_container.return_value = "/ROOT/cont1"
+        self.local.isprotected_container.return_value = False
+        mock_fbrest.return_value = None
+        mock_mprest.return_value = None
+        mock_unshr.return_value = None
+        mock_furchmod.return_value = None
+        mock_nv.return_value.set_mode.return_value = None
+        mock_execm.return_value.set_mode.return_value = False
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_setup(cmdp)
+        self.assertEqual(status, 1)
+
+        argv = ["udocker", "setup", "mycont"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.cd_container.return_value = "/ROOT/cont1"
+        self.local.isprotected_container.return_value = False
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_setup(cmdp)
+        self.assertEqual(status, 0)
 
     @patch('udocker.cli.UdockerTools')
     @patch('udocker.cli.Msg')
