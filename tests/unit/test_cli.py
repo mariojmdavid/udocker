@@ -935,219 +935,292 @@ class UdockerCLITestCase(TestCase):
         self.assertEqual(status, 0)
         self.assertTrue(self.local.del_imagerepo.called)
 
-    # @patch('udocker.container.localrepo.LocalRepository.protect_imagerepo', autospec=True)
-    # @patch('udocker.container.localrepo.LocalRepository.protect_container', autospec=True)
-    # @patch('udocker.container.localrepo.LocalRepository.get_container_id', autospec=True)
-    # @patch('udocker.cmdparser.CmdParser.get', autospec=True)
-    # @patch('udocker.cmdparser.CmdParser.missing_options', autospec=True)
-    # @patch('udocker.cli.UdockerCLI._check_imagespec')
-    # @patch('udocker.cli.KeyStore')
-    # @patch('udocker.cli.DockerIoAPI')
-    # @patch('udocker.cli.Msg')
-    # def test_28_do_protect(self, mock_msg, mock_dioapi, mock_ks,
-    #                        mock_chkimg, mock_miss, mock_get, mock_contid,
-    #                        mock_protcont, mock_protimg):
-    #     """Test28 UdockerCLI().do_protect()."""
+    @patch.object(UdockerCLI, '_check_imagespec')
+    def test_28_do_protect(self, mock_chkimg):
+        """Test28 UdockerCLI().do_protect()."""
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_protect(cmdp)
+        self.assertEqual(status, 1)
+        self.assertFalse(self.local.get_container_id.called)
 
-    #     mock_msg.level = 0
-    #     mock_miss.return_value = True
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_protect(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "protect"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = False
+        mock_chkimg.return_value = ("", "latest")
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_protect(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(self.local.get_container_id.called)
+        self.assertTrue(mock_chkimg.called)
+        self.assertFalse(self.local.protect_container.called)
+        self.assertFalse(self.local.protect_imagerepo.called)
 
-    #     mock_miss.return_value = False
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     mock_contid.return_value = "123"
-    #     mock_protcont.return_value = False
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_protect(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "protect", "ipyrad"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = False
+        mock_chkimg.return_value = ("", "latest")
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_protect(cmdp)
+        self.assertEqual(status, 1)
 
-    #     mock_miss.return_value = False
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     mock_contid.return_value = "123"
-    #     mock_protcont.return_value = True
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_protect(self.cmdp)
-    #     self.assertEqual(status, 0)
+        argv = ["udocker", "protect", "ipyrad"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = False
+        self.local.protect_imagerepo.return_value = True
+        mock_chkimg.return_value = ("ipyrad", "latest")
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_protect(cmdp)
+        self.assertEqual(status, 0)
+        self.assertTrue(self.local.protect_imagerepo.called)
 
-    #     mock_miss.return_value = False
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("", "TAG")
-    #     mock_contid.return_value = ""
-    #     mock_protcont.return_value = True
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_protect(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "protect", "ipyrad"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = True
+        self.local.protect_container.return_value = True
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_protect(cmdp)
+        self.assertEqual(status, 0)
+        self.assertTrue(self.local.get_container_id.called)
+        self.assertTrue(self.local.protect_container.called)
 
-    #     mock_miss.return_value = False
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     mock_contid.return_value = ""
-    #     mock_protcont.return_value = True
-    #     mock_protimg.return_value = True
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_protect(self.cmdp)
-    #     self.assertEqual(status, 0)
+        argv = ["udocker", "protect", "ipyrad"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = True
+        self.local.protect_container.return_value = False
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_protect(cmdp)
+        self.assertEqual(status, 1)
 
-    # @patch('udocker.container.localrepo.LocalRepository.unprotect_imagerepo', autospec=True)
-    # @patch('udocker.container.localrepo.LocalRepository.unprotect_container', autospec=True)
-    # @patch('udocker.container.localrepo.LocalRepository.get_container_id', autospec=True)
-    # @patch('udocker.cmdparser.CmdParser.get', autospec=True)
-    # @patch('udocker.cmdparser.CmdParser.missing_options', autospec=True)
-    # @patch('udocker.cli.UdockerCLI._check_imagespec')
-    # @patch('udocker.cli.KeyStore')
-    # @patch('udocker.cli.DockerIoAPI')
-    # @patch('udocker.cli.Msg')
-    # def test_29_do_unprotect(self, mock_msg, mock_dioapi,
-    #                          mock_ks, mock_chkimg, mock_miss, mock_get,
-    #                          mock_contid, mock_uprotcont, mock_uprotimg):
-    #     """Test29 UdockerCLI().do_unprotect()."""
+    @patch.object(UdockerCLI, '_check_imagespec')
+    def test_29_do_unprotect(self, mock_chkimg):
+        """Test29 UdockerCLI().do_unprotect()."""
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_unprotect(cmdp)
+        self.assertEqual(status, 1)
+        self.assertFalse(self.local.get_container_id.called)
 
-    #     mock_msg.level = 0
-    #     mock_miss.return_value = True
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_unprotect(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "protect"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = False
+        mock_chkimg.return_value = ("", "latest")
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_unprotect(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(self.local.get_container_id.called)
+        self.assertTrue(mock_chkimg.called)
+        self.assertFalse(self.local.unprotect_container.called)
+        self.assertFalse(self.local.unprotect_imagerepo.called)
 
-    #     mock_miss.return_value = False
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     mock_contid.return_value = "123"
-    #     mock_uprotcont.return_value = False
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_unprotect(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "protect", "ipyrad"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = False
+        mock_chkimg.return_value = ("", "latest")
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_unprotect(cmdp)
+        self.assertEqual(status, 1)
 
-    #     mock_miss.return_value = False
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     mock_contid.return_value = "123"
-    #     mock_uprotcont.return_value = True
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_unprotect(self.cmdp)
-    #     self.assertEqual(status, 0)
+        argv = ["udocker", "protect", "ipyrad"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = False
+        self.local.unprotect_imagerepo.return_value = True
+        mock_chkimg.return_value = ("ipyrad", "latest")
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_unprotect(cmdp)
+        self.assertEqual(status, 0)
+        self.assertTrue(self.local.unprotect_imagerepo.called)
 
-    #     mock_miss.return_value = False
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     mock_contid.return_value = ""
-    #     mock_uprotimg.return_value = True
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_unprotect(self.cmdp)
-    #     self.assertEqual(status, 0)
-    #     self.assertTrue(mock_uprotimg.called)
+        argv = ["udocker", "protect", "ipyrad"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = True
+        self.local.unprotect_container.return_value = True
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_unprotect(cmdp)
+        self.assertEqual(status, 0)
+        self.assertTrue(self.local.get_container_id.called)
+        self.assertTrue(self.local.unprotect_container.called)
 
-    # @patch('udocker.container.localrepo.LocalRepository.set_container_name', autospec=True)
-    # @patch('udocker.container.localrepo.LocalRepository.get_container_id', autospec=True)
-    # @patch('udocker.cmdparser.CmdParser.get', autospec=True)
-    # @patch('udocker.cmdparser.CmdParser.missing_options', autospec=True)
-    # @patch('udocker.cli.UdockerCLI._check_imagespec')
-    # @patch('udocker.cli.KeyStore')
-    # @patch('udocker.cli.DockerIoAPI')
-    # @patch('udocker.cli.Msg')
-    # def test_30_do_name(self, mock_msg, mock_dioapi, mock_ks,
-    #                     mock_chkimg, mock_miss, mock_get, mock_contid,
-    #                     mock_setcont):
-    #     """Test30 UdockerCLI().do_name()."""
+        argv = ["udocker", "protect", "ipyrad"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = True
+        self.local.unprotect_container.return_value = False
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_unprotect(cmdp)
+        self.assertEqual(status, 1)
 
-    #     mock_msg.level = 0
-    #     mock_miss.return_value = True
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_name(self.cmdp)
-    #     self.assertEqual(status, 1)
+    def test_30_do_name(self):
+        """Test30 UdockerCLI().do_name()."""
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_name(cmdp)
+        self.assertEqual(status, 1)
 
-    #     mock_miss.return_value = False
-    #     mock_get.side_effect = ["", "NAME", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     mock_contid.return_value = ""
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_name(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "name"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = False
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_name(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(self.local.get_container_id.called)
+        self.assertFalse(self.local.set_container_name.called)
 
-    #     mock_miss.return_value = False
-    #     mock_get.side_effect = ["", "NAME", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     mock_contid.return_value = "123"
-    #     mock_setcont.return_value = False
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_name(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "name", "12345", "mycont"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = True
+        self.local.set_container_name.return_value = False
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_name(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(self.local.set_container_name.called)
 
-    #     mock_miss.return_value = False
-    #     mock_get.side_effect = ["", "NAME", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     mock_contid.return_value = "123"
-    #     mock_setcont.return_value = True
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_name(self.cmdp)
-    #     self.assertEqual(status, 0)
+        argv = ["udocker", "name", "12345", "mycont"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = True
+        self.local.set_container_name.return_value = True
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_name(cmdp)
+        self.assertEqual(status, 0)
 
-    # def test_31_do_rename(self):
-    #     """Test31 UdockerCLI().do_rename()."""
+    def test_31_do_rename(self):
+        """Test31 UdockerCLI().do_rename()."""
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_rename(cmdp)
+        self.assertEqual(status, 1)
 
-    # @patch('udocker.container.localrepo.LocalRepository.del_container_name', autospec=True)
-    # @patch('udocker.cmdparser.CmdParser.get', autospec=True)
-    # @patch('udocker.cmdparser.CmdParser.missing_options', autospec=True)
-    # @patch('udocker.cli.UdockerCLI._check_imagespec')
-    # @patch('udocker.cli.KeyStore')
-    # @patch('udocker.cli.DockerIoAPI')
-    # @patch('udocker.cli.Msg')
-    # def test_32_do_rmname(self, mock_msg, mock_dioapi, mock_ks,
-    #                       mock_chkimg, mock_miss, mock_get, mock_delcontname):
-    #     """Test32 UdockerCLI().do_rmname()."""
+        argv = ["udocker", "rename", "contname", "newname"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.side_effect = ["", ""]
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_rename(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(self.local.get_container_id.call_count, 1)
 
-    #     mock_msg.level = 0
-    #     mock_miss.return_value = True
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_rmname(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "rename", "contname", "newname"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.side_effect = ["123", "543"]
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_rename(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(self.local.get_container_id.call_count, 2)
 
-    #     mock_miss.return_value = False
-    #     mock_get.side_effect = ["NAME", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     mock_delcontname.return_value = False
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_rmname(self.cmdp)
-    #     self.assertEqual(status, 1)
+        argv = ["udocker", "rename", "contname", "newname"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.side_effect = ["123", ""]
+        self.local.del_container_name.return_value = False
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_rename(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(self.local.del_container_name.called)
+        self.assertFalse(self.local.set_container_name.called)
 
-    #     mock_miss.return_value = False
-    #     mock_get.side_effect = ["NAME", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     mock_delcontname.return_value = True
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_rmname(self.cmdp)
-    #     self.assertEqual(status, 0)
+        argv = ["udocker", "rename", "contname", "newname"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.side_effect = ["123", ""]
+        self.local.del_container_name.return_value = True
+        self.local.set_container_name.side_effect = [False, True]
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_rename(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(self.local.set_container_name.call_count, 2)
 
-    # @patch('udocker.container.localrepo.LocalRepository.get_container_id', autospec=True)
-    # @patch('udocker.cmdparser.CmdParser.get', autospec=True)
-    # @patch('udocker.cmdparser.CmdParser.missing_options', autospec=True)
-    # @patch('udocker.cli.ContainerStructure')
-    # @patch('udocker.cli.UdockerCLI._check_imagespec')
-    # @patch('udocker.cli.KeyStore')
-    # @patch('udocker.cli.Msg')
-    # def test_33_do_inspect(self, mock_msg,
-    #                        mock_ks, mock_chkimg, mock_cstruct, mock_miss,
-    #                        mock_get, mock_contid):
-    #     """Test33 UdockerCLI().do_inspect()."""
+        argv = ["udocker", "rename", "contname", "newname"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.side_effect = ["123", ""]
+        self.local.del_container_name.return_value = True
+        self.local.set_container_name.side_effect = [True, True]
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_rename(cmdp)
+        self.assertEqual(status, 0)
+        self.assertTrue(self.local.set_container_name.call_count, 1)
 
-    #     mock_msg.level = 0
-    #     mock_miss.return_value = True
-    #     mock_get.side_effect = ["", "", "" "", "", ]
-    #     mock_chkimg.return_value = ("IMAGE", "TAG")
-    #     udoc = UdockerCLI(self.local)
-    #     status = udoc.do_inspect(self.cmdp)
-    #     self.assertEqual(status, 1)
+    def test_32_do_rmname(self):
+        """Test32 UdockerCLI().do_rmname()."""
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_rmname(cmdp)
+        self.assertEqual(status, 1)
+
+        argv = ["udocker", "rmname"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_rmname(cmdp)
+        self.assertEqual(status, 1)
+        self.assertFalse(self.local.del_container_name.called)
+
+        argv = ["udocker", "rmname", "contname"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.del_container_name.return_value = False
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_rmname(cmdp)
+        self.assertEqual(status, 1)
+        self.assertTrue(self.local.del_container_name.called)
+
+        argv = ["udocker", "rmname", "contname"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.del_container_name.return_value = True
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_rmname(cmdp)
+        self.assertEqual(status, 0)
+        self.assertTrue(self.local.del_container_name.called)
+
+    @patch.object(UdockerCLI, '_check_imagespec')
+    @patch('udocker.cli.json.dumps')
+    @patch('udocker.cli.ContainerStructure.get_container_attr')
+    @patch('udocker.cli.Msg')
+    def test_33_do_inspect(self, mock_msg, mock_cstruct, mock_jdump,
+                           mock_chkimg):
+        """Test33 UdockerCLI().do_inspect()."""
+        mock_msg.level = 0
+        argv = ["udocker", "-h"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = ""
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_inspect(cmdp)
+        self.assertEqual(status, 1)
+
+        argv = ["udocker", "inspect"]
+        cmdp = CmdParser()
+        cmdp.parse(argv)
+        self.local.get_container_id.return_value = ""
+        mock_chkimg.return_value = ("", "latest")
+        self.local.cd_imagerepo.return_value = False
+        udoc = UdockerCLI(self.local)
+        status = udoc.do_inspect(cmdp)
+        self.assertEqual(status, 1)
 
     #     mock_miss.return_value = False
     #     mock_get.side_effect = ["", "", "" "", "", ]
